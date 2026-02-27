@@ -1,7 +1,6 @@
 #!/bin/bash
 
 # Chat2API Quick Start Script
-# This script helps users get Chat2API running quickly with Docker
 
 set -e
 
@@ -9,69 +8,48 @@ echo "🚀 Chat2API Quick Start"
 echo "======================"
 echo ""
 
-# Check if Docker is installed
+# 颜色定义
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m'
+
+# 检查函数
+check_step() {
+    echo -e "${GREEN}[✓]${NC} $1"
+}
+
+error_step() {
+    echo -e "${RED}[✗]${NC} $1"
+}
+
+warn_step() {
+    echo -e "${YELLOW}[⚠]${NC} $1"
+}
+
+# 检查 Docker 环境
+echo "📋 检查环境..."
+
 if ! command -v docker &> /dev/null; then
-    echo "❌ Docker is not installed. Please install Docker first:"
-    echo "   https://docs.docker.com/get-docker/"
+    error_step "Docker 未安装，请先安装: https://docs.docker.com/get-docker/"
     exit 1
 fi
 
-# Check if Docker Compose is installed
-if ! command -v docker-compose &> /dev/null && ! docker compose version &> /dev/null; then
-    echo "❌ Docker Compose is not installed. Please install Docker Compose first:"
-    echo "   https://docs.docker.com/compose/install/"
+if ! command -v docker-compose &> /dev/null; then
+    error_step "Docker Compose 未安装，请先安装: https://docs.docker.com/compose/install/"
     exit 1
 fi
 
-echo "✅ Docker and Docker Compose are installed"
+check_step "Docker 和 Docker Compose 已安装"
+
+# 检查端口占用
 echo ""
-
-# Build and start the application
-echo "🔨 Building Docker image..."
-docker-compose build
-
-echo ""
-echo "🚀 Starting Chat2API..."
-docker-compose up -d
-
-echo ""
-echo "⏳ Waiting for Chat2API to start..."
-sleep 15
-
-# Check if container is running
-if docker-compose ps | grep -q "Up"; then
-    echo ""
-    echo "✅ Chat2API is running successfully!"
-    echo ""
-    echo "📋 Access Information:"
-    echo "   🌐 Web Management: http://localhost:58080"
-    echo "   🔍 Health Check: http://localhost:58080/health"
-    echo "   📊 API Endpoint: http://localhost:58080/v1/chat/completions"
-    echo ""
-    echo "🔧 Management Commands:"
-    echo "   📋 View logs: docker-compose logs -f chat2api"
-    echo "   🛑 Stop: docker-compose down"
-    echo "   🔄 Restart: docker-compose restart"
-    echo "   📊 Status: docker-compose ps"
-    echo ""
-    echo "📁 Data Persistence:"
-    echo "   📂 Config files: ./docker-data/config/"
-    echo "   📂 Log files: ./docker-data/logs/"
-    echo ""
-    echo "💡 First-time setup:"
-    echo "   1. Open http://localhost:58080 in your browser"
-    echo "   2. Configure your AI providers in the desktop app"
-    echo "   3. Generate API keys for your applications"
-    echo "   4. Start using the OpenAI-compatible API!"
-    echo ""
-    echo "📖 For more information, see:"
-    echo "   📚 README: https://github.com/narrator-z/Chat2API"
-    echo "   🐳 Docker Guide: ./docker/README.md"
-    echo ""
-    echo "🎉 Happy AI coding with Chat2API!"
+echo "📋 检查端口 58080..."
+if netstat -tlnp 2>/dev/null | grep -q ":58080 "; then
+    warn_step "端口 58080 已被占用"
+    echo "尝试使用端口 58123..."
+    PORT=58123
 else
-    echo ""
-    echo "❌ Chat2API failed to start. Checking logs..."
-    docker-compose logs chat2api
-    exit 1
+    PORT=58080
+    check_step "端口 $PORT 可用"
 fi

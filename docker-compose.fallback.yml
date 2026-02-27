@@ -1,0 +1,45 @@
+version: '3.8'
+
+services:
+  chat2api:
+    # 使用预构建镜像避免构建问题
+    image: node:18-bullseye-slim
+    container_name: chat2api-fallback
+    ports:
+      - "58080:58080"
+      # 如果端口冲突，取消下面的注释
+      # - "58123:58080"
+    environment:
+      - NODE_ENV=production
+      - ELECTRON_IS_DEV=0
+      - TZ=Asia/Shanghai
+    volumes:
+      # 挂载当前目录
+      - ./:/app
+      - /app/node_modules  # 避免重新安装依赖
+    working_dir: /app
+    restart: unless-stopped
+    command: >
+      bash -c "
+        # 安装依赖（如果需要）
+        if [ ! -d 'node_modules' ]; then
+          npm ci --only=production
+        fi
+        
+        # 确保输出目录存在
+        mkdir -p out
+        
+        # 如果没有构建文件，构建应用
+        if [ ! -f 'out/main/index.js' ]; then
+          npm run build
+        fi
+        
+        # 启动应用
+        exec node_modules/.bin/electron .
+      "
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:58080/health" || "true"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
