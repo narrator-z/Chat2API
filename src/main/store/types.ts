@@ -197,6 +197,19 @@ export interface AppConfig {
   apiKeys: ApiKey[]
   /** Whether to enable API Key authentication */
   enableApiKey: boolean
+  /** Web control configuration */
+  webControl: {
+    /** Whether to enable web control interface */
+    enabled: boolean
+    /** Web control password (optional) */
+    password?: string
+    /** Allowed IP addresses (optional, empty means allow all) */
+    allowedIPs?: string[]
+    /** Whether to enable CORS */
+    enableCORS: boolean
+  }
+  /** Provider configurations */
+  providers: Provider[]
   /** OAuth proxy mode: 'system' uses system proxy, 'none' disables proxy */
   oauthProxyMode: 'system' | 'none'
 }
@@ -288,7 +301,7 @@ export interface StoreSchema {
  * Default Application Configuration
  */
 export const DEFAULT_CONFIG: AppConfig = {
-  proxyPort: 8080,
+  proxyPort: 58080, // Default port 58080, will auto-detect if occupied
   loadBalanceStrategy: 'round-robin',
   modelMappings: {},
   theme: 'system',
@@ -301,6 +314,12 @@ export const DEFAULT_CONFIG: AppConfig = {
   retryCount: 3,
   apiKeys: [],
   enableApiKey: false,
+  webControl: {
+    enabled: true,
+    enableCORS: true,
+    allowedIPs: []
+  },
+  providers: [],
   oauthProxyMode: 'system',
 }
 

@@ -49,7 +49,7 @@ export function About() {
           hasUpdate: false,
           currentVersion: appVersion,
           latestVersion,
-          releaseUrl: 'https://github.com/xiaoY233/Chat2API/releases',
+          releaseUrl: 'https://github.com/narrator-z/Chat2API/releases',
         },
       })
     } catch (error) {
@@ -66,7 +66,7 @@ export function About() {
   }
 
   const handleDownloadAppUpdate = () => {
-    const url = appUpdateStatus.result?.releaseUrl || 'https://github.com/xiaoY233/Chat2API/releases'
+    const url = appUpdateStatus.result?.releaseUrl || 'https://github.com/narrator-z/Chat2API/releases'
     if (window.electronAPI?.app?.openExternal) {
       window.electronAPI.app.openExternal(url)
     } else {
@@ -86,17 +86,17 @@ export function About() {
     {
       label: t('about.github'),
       icon: Github,
-      url: 'https://github.com/xiaoY233/Chat2API',
+      url: 'https://github.com/narrator-z/Chat2API',
     },
     {
       label: t('about.documentation'),
       icon: FileText,
-      url: 'https://github.com/xiaoY233/Chat2API#readme',
+      url: 'https://github.com/narrator-z/Chat2API#readme',
     },
     {
       label: t('about.reportIssue'),
       icon: Bug,
-      url: 'https://github.com/xiaoY233/Chat2API/issues',
+      url: 'https://github.com/narrator-z/Chat2API/issues',
     },
   ]
 

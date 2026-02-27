@@ -26,6 +26,44 @@
   Chat2API is a native desktop application that provides an <strong>OpenAI-compatible API</strong> for multiple AI service providers. It allows you to use any OpenAI-compatible client with DeepSeek, GLM, Kimi, MiniMax, Qwen, Z.ai and more across <strong>macOS</strong>, <strong>Windows</strong>, and <strong>Linux</strong>.
 </p>
 
+## 🏗️ Architecture & Credits
+
+This project is an enhanced version of [xiaoY233/Chat2API](https://github.com/xiaoY233/Chat2API) with additional features:
+
+- 🌐 **Web-based Remote Management** - Control the desktop application via web browser
+- 🔄 **Automatic Port Detection** - Smart port conflict resolution (default: 58080)
+- 🐳 **Docker Support** - Containerized deployment with Docker Compose
+- 📦 **Multi-platform Packages** - Linux deb, tar.gz, and ZIP packages
+- 🎨 **Enhanced UI** - Improved user interface and experience
+
+**Original Author**: [xiaoY233](https://github.com/xiaoY233)  
+**Enhanced by**: [narrator-z](https://github.com/narrator-z)
+
+## 🚀 Quick Start with Docker
+
+The easiest way to get started is using Docker Compose:
+
+```bash
+# One-command start (recommended)
+git clone https://github.com/narrator-z/Chat2API.git && cd Chat2API && ./quick-start.sh
+
+# Or manual start
+git clone https://github.com/narrator-z/Chat2API.git
+cd Chat2API
+docker-compose up -d
+
+# Access the web interface
+open http://localhost:58080
+```
+
+**That's it!** 🎉 Chat2API will be running with:
+- ✅ Automatic port conflict detection
+- ✅ Web-based remote management
+- ✅ Data persistence
+- ✅ Health monitoring
+
+For detailed setup instructions, see [QUICK_START.md](QUICK_START.md).
+
 ## ✨ Features
 
 - OpenAI Compatible API: Provides standard OpenAI-compatible API endpoints for seamless integration

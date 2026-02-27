@@ -4,11 +4,19 @@
   "description": "Chat2API 管理器 - 统一管理多个 AI 服务提供商，提供 OpenAI 兼容 API 接口",
   "main": "./out/main/index.js",
   "author": {
-    "name": "Chat2API Team",
-    "email": "support@chat2api.com"
+    "name": "narrator-z",
+    "email": "narratorz@duck.com",
+    "url": "https://github.com/narrator-z"
   },
-  "homepage": "https://github.com/chat2api/Chat2API-Manager",
+  "homepage": "https://github.com/narrator-z/Chat2API",
   "license": "GPL-3.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/narrator-z/Chat2API.git"
+  },
+  "bugs": {
+    "url": "https://github.com/narrator-z/Chat2API/issues"
+  },
   "scripts": {
     "dev": "bash scripts/dev.sh",
     "dev:win": "electron-vite dev",
@@ -89,7 +97,7 @@
   "build": {
     "appId": "com.chat2api.manager",
     "productName": "Chat2API",
-    "copyright": "Copyright © 2026 Chat2API Team",
+    "copyright": "Copyright © 2026 narrator-z",
     "directories": {
       "output": "dist",
       "buildResources": "build"
@@ -207,37 +215,66 @@
         {
           "target": "deb",
           "arch": [
-            "x64"
+            "x64",
+            "arm64"
           ]
         },
         {
           "target": "tar.gz",
           "arch": [
-            "x64"
+            "x64",
+            "arm64"
           ]
         }
       ],
       "category": "Utility",
       "icon": "build/icon.png",
-      "maintainer": "Chat2API Team <support@chat2api.com>",
+      "maintainer": "narrator-z <narratorz@duck.com>",
       "artifactName": "${productName}-${version}-${arch}.${ext}",
       "desktop": {
         "Name": "Chat2API",
-        "Comment": "统一管理多个 AI 服务提供商",
-        "Categories": "Utility;Network;",
-        "StartupWMClass": "chat2api"
+        "Comment": "统一管理多个 AI 服务提供商，提供 OpenAI 兼容 API 接口",
+        "Comment[zh_CN]": "统一管理多个 AI 服务提供商，提供 OpenAI 兼容 API 接口",
+        "Categories": "Utility;Network;Development;",
+        "Keywords": "ai;api;proxy;chatgpt;openai;",
+        "StartupWMClass": "chat2api",
+        "StartupNotify": true
       }
     },
     "appImage": {
       "artifactName": "${productName}-${version}-${arch}.${ext}"
     },
     "deb": {
+      "artifactName": "${productName}-${version}-${arch}.${ext}",
+      "depends": [
+        "libgtk-3-0",
+        "libnotify4",
+        "libnss3",
+        "libxss1",
+        "libxtst6",
+        "xdg-utils",
+        "libatspi2.0-0",
+        "libdrm2",
+        "libxcomposite1",
+        "libxdamage1",
+        "libxrandr2",
+        "libgbm1",
+        "libxkbcommon0",
+        "libasound2"
+      ],
       "priority": "optional",
-      "artifactName": "${productName}-${version}-${arch}.${ext}"
+      "recommends": [
+        "gnome-keyring",
+        "libsecret-1-0"
+      ],
+      "synopsis": "AI Services Unified Management Tool",
+      "description": "Chat2API is an enhanced AI service management tool by narrator-z, based on xiaoY233/Chat2API. It provides an OpenAI-compatible API for multiple AI service providers including DeepSeek, GLM, Kimi, MiniMax, Qwen, Z.ai and more. Features include web-based remote management, automatic port detection, real-time monitoring, API key management, and Docker support.",
+      "afterInstall": "build/postinst.sh",
+      "afterRemove": "build/prerm.sh"
     },
     "publish": {
       "provider": "github",
-      "owner": "xiaoY233",
+      "owner": "narrator-z",
       "repo": "Chat2API"
     }
   }

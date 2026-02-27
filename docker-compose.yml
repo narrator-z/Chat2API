@@ -1,0 +1,67 @@
+version: '3.8'
+
+services:
+  chat2api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: narrator-z/chat2api:latest
+    container_name: chat2api
+    ports:
+      - "58080:58080"  # Default port
+      # Uncomment and modify if you want a different port
+      # - "58123:58080"  # Map host port 58123 to container port 58080
+    environment:
+      - NODE_ENV=production
+      - ELECTRON_IS_DEV=0
+      - TZ=Asia/Shanghai
+    volumes:
+      # Persist configuration and logs
+      - ./docker-data/config:/app/config
+      - ./docker-data/logs:/app/logs
+      # Optional: Mount your own config files
+      # - ./config.json:/app/config/config.json:ro
+    restart: unless-stopped
+    networks:
+      - chat2api-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:58080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    # Optional: Add resource limits
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+        reservations:
+          memory: 256M
+          cpus: '0.25'
+
+  # Optional: Add a reverse proxy for HTTPS
+  # nginx:
+  #   image: nginx:alpine
+  #   container_name: chat2api-nginx
+  #   ports:
+  #     - "80:80"
+  #     - "443:443"
+  #   volumes:
+  #     - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+  #     - ./nginx/ssl:/etc/nginx/ssl:ro
+  #   depends_on:
+  #     - chat2api
+  #   restart: unless-stopped
+  #   networks:
+  #     - chat2api-network
+
+networks:
+  chat2api-network:
+    driver: bridge
+
+volumes:
+  chat2api-config:
+    driver: local
+  chat2api-logs:
+    driver: local

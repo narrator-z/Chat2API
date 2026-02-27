@@ -1,0 +1,33 @@
+version: '3.8'
+
+services:
+  chat2api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: narrator-z/chat2api:dev
+    container_name: chat2api-dev
+    ports:
+      - "58080:58080"
+      - "9222:9222"  # Debug port
+    environment:
+      - NODE_ENV=development
+      - ELECTRON_IS_DEV=1
+      - TZ=Asia/Shanghai
+      - DEBUG=chat2api:*
+    volumes:
+      # Mount source code for development
+      - ./src:/app/src:ro
+      - ./out:/app/out:ro
+      - ./docker-data/config:/app/config
+      - ./docker-data/logs:/app/logs
+    restart: "no"  # Don't restart in development
+    networks:
+      - chat2api-network
+    # Enable debugging
+    stdin_open: true
+    tty: true
+
+networks:
+  chat2api-network:
+    driver: bridge

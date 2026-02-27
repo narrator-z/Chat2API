@@ -1,0 +1,19 @@
+version: '3.8'
+
+services:
+  chat2api-builder:
+    build:
+      context: .
+      dockerfile: Dockerfile.build
+    volumes:
+      - ./dist:/app/dist
+    environment:
+      - NODE_ENV=production
+    command: >
+      bash -c "
+        npm ci &&
+        npm run build &&
+        npx electron-builder --linux deb --x64 &&
+        cp -r /app/dist/* /dist/ &&
+        echo '✅ Build completed! Check ./dist/ directory for deb packages'
+      "
