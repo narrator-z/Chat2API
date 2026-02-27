@@ -57,20 +57,61 @@ This fork maintains full compliance with the original GPL-3.0 license.
 
 ## 🚀 Quick Start with Docker
 
-The easiest way to get started is using Docker Compose:
+### 🎯 推荐方式（一键启动）
 
 ```bash
-# One-command start (recommended)
-git clone https://github.com/narrator-z/Chat2API.git && cd Chat2API && ./quick-start.sh
+# 克隆并启动（推荐）
+git clone https://github.com/narrator-z/Chat2API.git && cd Chat2API && chmod +x smart-start.sh && ./smart-start.sh
 
-# Or manual start
-git clone https://github.com/narrator-z/Chat2API.git
-cd Chat2API
+# 或使用极简脚本
+git clone https://github.com/narrator-z/Chat2API.git && cd Chat2API && chmod +x just-run.sh && ./just-run.sh
+```
+
+### 🔧 多种启动选项
+
+#### 方式1：智能启动（推荐）
+```bash
+./smart-start.sh
+```
+✅ 自动安装 Docker Compose（如果需要）
+✅ 自动安装 Node.js（如果需要）
+✅ 自动检测端口冲突
+✅ 提供多种启动选项
+
+#### 方式2：极简启动
+```bash
+./just-run.sh
+```
+🚀 最简单的启动方式，适用于任何环境
+
+#### 方式3：标准启动
+```bash
+./quick-start.sh
+```
+📋 需要手动安装依赖和构建
+
+#### 方式4：故障排除
+```bash
+./troubleshoot.sh
+```
+🛠️ 详细的诊断和修复工具
+
+#### 方式5：Docker Compose 直接启动
+```bash
+# 需要先构建应用
+npm run build
+
+# 标准启动
 docker-compose up -d
 
+# 或使用无构建版本
+docker-compose -f docker-compose.auto.yml up -d
+
+# 或使用简化版本
+docker-compose -f docker-compose.fallback.yml up -d
+```
 # Access the web interface
 open http://localhost:58080
-```
 
 **That's it!** 🎉 Chat2API will be running with:
 - ✅ Automatic port conflict detection

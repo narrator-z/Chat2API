@@ -1,0 +1,44 @@
+version: '3.8'
+
+services:
+  chat2api:
+    # 使用官方 Node.js 镜像，自动构建应用
+    image: node:18-bullseye-slim
+    container_name: chat2api-auto
+    ports:
+      - "58080:58080"
+    environment:
+      - NODE_ENV:production
+      - ELECTRON_IS_DEV:0
+      - TZ:Asia/Shanghai
+    volumes:
+      # 挂载源码目录
+      - ./:/app
+      # 缓存 node_modules 避免重复安装
+      - /app/node_modules
+    working_dir: /app
+    restart: unless-stopped
+    command: >
+      bash -c "
+        # 安装依赖（如果 node_modules 不存在）
+        if [ ! -d 'node_modules' ]; then
+          echo '📦 安装依赖...'
+          npm ci --only=production --silent
+        fi
+        
+        # 构建应用（如果 out 目录不存在或为空）
+        if [ ! -f 'out/main/index.js' ]; then
+          echo '🔨 构建应用...'
+          npm run build
+        fi
+        
+        # 启动应用
+        echo '🚀 启动 Chat2API...'
+        exec node_modules/.bin/electron .
+      "
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:58080/health" || "true"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
