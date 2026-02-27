@@ -26,9 +26,23 @@
   Chat2API is a native desktop application that provides an <strong>OpenAI-compatible API</strong> for multiple AI service providers. It allows you to use any OpenAI-compatible client with DeepSeek, GLM, Kimi, MiniMax, Qwen, Z.ai and more across <strong>macOS</strong>, <strong>Windows</strong>, and <strong>Linux</strong>.
 </p>
 
-## 🏗️ Architecture & Credits
+---
 
-This project is an enhanced version of [xiaoY233/Chat2API](https://github.com/xiaoY233/Chat2API) with additional features:
+## 📄 License
+
+GNU General Public License v3.0. See LICENSE for details.
+
+This means:
+
+✅ Free to use, modify, and distribute  
+✅ Derivative works must be open-sourced under the same license  
+✅ Must preserve original copyright notices
+
+---
+
+## 🏗️ About This Fork
+
+This is a fork of the original [xiaoY233/Chat2API](https://github.com/xiaoY233/Chat2API) project with additional enhancements:
 
 - 🌐 **Web-based Remote Management** - Control the desktop application via web browser
 - 🔄 **Automatic Port Detection** - Smart port conflict resolution (default: 58080)
@@ -36,8 +50,10 @@ This project is an enhanced version of [xiaoY233/Chat2API](https://github.com/xi
 - 📦 **Multi-platform Packages** - Linux deb, tar.gz, and ZIP packages
 - 🎨 **Enhanced UI** - Improved user interface and experience
 
-**Original Author**: [xiaoY233](https://github.com/xiaoY233)  
-**Enhanced by**: [narrator-z](https://github.com/narrator-z)
+**Original Project**: [xiaoY233/Chat2API](https://github.com/xiaoY233/Chat2API)  
+**Fork Maintainer**: [narrator-z](https://github.com/narrator-z)
+
+This fork maintains full compliance with the original GPL-3.0 license.
 
 ## 🚀 Quick Start with Docker
 
