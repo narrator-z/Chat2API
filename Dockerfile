@@ -41,8 +41,14 @@ RUN npm install -g electron-builder electron-vite
 # Copy source code
 COPY . .
 
-# Install all dependencies
-RUN npm install
+# Install electron first (needed by electron-builder)
+RUN npm install electron --save-dev
+
+# Install all other dependencies (skip postinstall for now)
+RUN npm install --ignore-scripts
+
+# Run postinstall manually after electron is installed
+RUN npm run postinstall || true
 
 # Build application
 RUN npm run build
