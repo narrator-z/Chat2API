@@ -33,17 +33,14 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies without postinstall scripts
-RUN npm ci --only=production --ignore-scripts
+# Install all dependencies (including dev dependencies for build)
+RUN npm ci
 
-# Install build tools and electron-builder
+# Install build tools globally
 RUN npm install -g electron-vite electron-builder
 
 # Copy source code
 COPY . .
-
-# Run postinstall scripts manually
-RUN npm run postinstall || true
 
 # Build application
 RUN npm run build
@@ -76,5 +73,5 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
 # Set entrypoint
 ENTRYPOINT ["docker-entrypoint.sh"]
 
-# Start the application
+# Start application
 CMD ["sh", "-c", "cd /app && export ELECTRON_IS_DEV=0 && export NODE_ENV=production && xvfb-run --auto-servernum --server-args='-screen 0 1024x768x24' node_modules/.bin/electron ."]
