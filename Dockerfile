@@ -32,26 +32,14 @@ RUN apt-get update || apt-get update && \
 # Set working directory
 WORKDIR /app
 
-# Copy package files
-COPY package*.json ./
-
-# Install build tools globally FIRST
-RUN npm install -g electron-builder electron-vite
-
-# Install electron-vite locally (needed by config file)
-RUN npm install electron-vite --save-dev
-
-# Install electron (needed by electron-builder)
-RUN npm install electron --save-dev
-
-# Copy source code
+# Copy all files
 COPY . .
 
-# Install remaining dependencies
-RUN npm install
+# Install all dependencies (including dev dependencies) - skip postinstall
+RUN npm install --include=dev --ignore-scripts
 
-# Build application
-RUN npm run build
+# Build application - use npx to find electron-vite
+RUN npx electron-vite build
 
 # Copy entrypoint script
 COPY docker-entrypoint.sh /usr/local/bin/
