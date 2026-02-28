@@ -5,6 +5,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        - NODE_ENV=production
     image: narrator-z/chat2api:latest
     container_name: chat2api
     ports:
@@ -12,7 +14,6 @@ services:
       # Uncomment and modify if you want a different port
       # - "58123:58080"  # Map host port 58123 to container port 58080
     environment:
-      - NODE_ENV=production
       - ELECTRON_IS_DEV=0
       - TZ=Asia/Shanghai
     volumes:
@@ -29,16 +30,16 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 40s
+      start_period: 60s  # 增加启动时间用于构建
     # Optional: Add resource limits
     deploy:
       resources:
         limits:
+          memory: 1G
+          cpus: '1.0'
+        reservations:
           memory: 512M
           cpus: '0.5'
-        reservations:
-          memory: 256M
-          cpus: '0.25'
 
   # Optional: Add a reverse proxy for HTTPS
   # nginx:
