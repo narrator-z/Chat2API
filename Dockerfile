@@ -33,30 +33,14 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
-# Install build tools globally FIRST
-RUN npm install -g electron-vite electron-builder
-
-# Install all dependencies (including dev dependencies) but skip postinstall
-RUN npm ci --ignore-scripts
-
 # Copy source code
 COPY . .
 
-# Install electron locally (needed for electron-builder)
-RUN npm install electron --no-save
+# Install all dependencies using npm install (not ci) to ensure everything is properly linked
+RUN npm install
 
-# Install exact electron-vite version locally
-RUN npm install electron-vite@2.3.0 --no-save
-
-# Run postinstall manually after electron-builder is available
-RUN npm run postinstall || true
-
-# Try different build approaches
-RUN npx electron-vite build || \
-    (echo "Trying alternative build method..." && \
-     NODE_PATH="/app/node_modules:/usr/local/lib/node_modules" npx electron-vite build) || \
-    (echo "Trying direct node_modules execution..." && \
-     node /app/node_modules/.bin/electron-vite build)
+# Build application using npm run build
+RUN npm run build
 
 # Copy entrypoint script
 COPY docker-entrypoint.sh /usr/local/bin/
