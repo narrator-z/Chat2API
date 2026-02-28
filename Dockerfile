@@ -45,14 +45,18 @@ COPY . .
 # Install electron locally (needed for electron-builder)
 RUN npm install electron --no-save
 
-# Install electron-vite locally to satisfy config imports
-RUN npm install electron-vite --no-save
+# Install exact electron-vite version locally
+RUN npm install electron-vite@2.3.0 --no-save
 
 # Run postinstall manually after electron-builder is available
 RUN npm run postinstall || true
 
-# Build application with explicit PATH
-RUN PATH="/usr/local/bin:$PATH" electron-vite build
+# Try different build approaches
+RUN npx electron-vite build || \
+    (echo "Trying alternative build method..." && \
+     NODE_PATH="/app/node_modules:/usr/local/lib/node_modules" npx electron-vite build) || \
+    (echo "Trying direct node_modules execution..." && \
+     node /app/node_modules/.bin/electron-vite build)
 
 # Copy entrypoint script
 COPY docker-entrypoint.sh /usr/local/bin/
