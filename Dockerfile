@@ -42,6 +42,9 @@ RUN npm ci --ignore-scripts
 # Copy source code
 COPY . .
 
+# Install electron-vite locally as well (to ensure it's in node_modules)
+RUN npm install electron-vite electron-builder --no-save
+
 # Run postinstall manually after electron-builder is available
 RUN npm run postinstall || true
 
