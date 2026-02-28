@@ -33,14 +33,17 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
-# Install all dependencies (including dev dependencies)
-RUN npm ci
-
-# Install build tools globally
+# Install build tools globally FIRST
 RUN npm install -g electron-vite electron-builder
+
+# Install all dependencies (including dev dependencies) but skip postinstall
+RUN npm ci --ignore-scripts
 
 # Copy source code
 COPY . .
+
+# Run postinstall manually after electron-builder is available
+RUN npm run postinstall || true
 
 # Build application
 RUN npm run build
