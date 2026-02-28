@@ -4,8 +4,9 @@ FROM node:22-bullseye-slim
 # Build arguments
 ARG NODE_ENV=production
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y \
+# Install system dependencies with retry and mirror
+RUN apt-get update || apt-get update && \
+    apt-get install -y --no-install-recommends \
     libgtk-3-0 \
     libnotify4 \
     libnss3 \
@@ -25,6 +26,7 @@ RUN apt-get update && apt-get install -y \
     xvfb \
     gosu \
     git \
+    ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
 # Set working directory
