@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   chat2api:
     build:
@@ -14,6 +12,7 @@ services:
       # Uncomment and modify if you want a different port
       # - "58123:58080"  # Map host port 58123 to container port 58080
     environment:
+      - NODE_ENV=production
       - ELECTRON_IS_DEV=0
       - TZ=Asia/Shanghai
     volumes:
