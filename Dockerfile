@@ -1,5 +1,5 @@
 # Chat2API Docker Image
-FROM node:20-bullseye-slim
+FROM node:22-bullseye-slim
 
 # Build arguments
 ARG NODE_ENV=production
@@ -33,17 +33,14 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
-# Install build tools globally first
-RUN npm install -g electron-vite electron-builder
-
 # Install all dependencies (including dev dependencies for build)
-RUN npm ci --ignore-scripts
+RUN npm ci
+
+# Install build tools globally
+RUN npm install -g electron-vite electron-builder
 
 # Copy source code
 COPY . .
-
-# Run postinstall scripts manually
-RUN npm run postinstall || true
 
 # Build application
 RUN npm run build
