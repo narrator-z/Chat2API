@@ -1,6 +1,9 @@
 # Chat2API Docker Image
 FROM node:18-bullseye-slim
 
+# Build arguments
+ARG NODE_ENV=production
+
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
     libgtk-3-0 \
@@ -32,24 +35,38 @@ COPY package*.json ./
 # Install dependencies
 RUN npm ci --only=production
 
-# Copy application files
-COPY out/ ./out/
+# Install build tools
+RUN npm install -g electron-vite
+
+# Copy source code
+COPY . .
+
+# Build application
+RUN npm run build
+
+# Copy entrypoint script
 COPY docker-entrypoint.sh /usr/local/bin/
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
+# Create data directories
+RUN mkdir -p /app/config /app/logs
+
 # Create app user
 RUN useradd -m -u 1000 chat2api && \
-    mkdir -p /app/config /app/logs && \
     chown -R chat2api:chat2api /app
 
 # Switch to app user
 USER chat2api
 
-# Expose ports
+# Set environment
+ENV NODE_ENV=${NODE_ENV}
+ENV ELECTRON_IS_DEV=0
+
+# Expose port
 EXPOSE 58080
 
 # Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
     CMD curl -f http://localhost:58080/health || exit 1
 
 # Set entrypoint

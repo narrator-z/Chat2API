@@ -57,58 +57,72 @@ This fork maintains full compliance with the original GPL-3.0 license.
 
 ## 🚀 Quick Start with Docker
 
-### 🎯 推荐方式（一键启动）
+### 🎯 最简单的方式（一键构建并启动）
 
 ```bash
-# 克隆并启动（推荐）
-git clone https://github.com/narrator-z/Chat2API.git && cd Chat2API && chmod +x smart-start.sh && ./smart-start.sh
+# 克隆项目
+git clone https://github.com/narrator-z/Chat2API.git
+cd Chat2API
 
-# 或使用极简脚本
-git clone https://github.com/narrator-z/Chat2API.git && cd Chat2API && chmod +x just-run.sh && ./just-run.sh
-```
-
-### 🔧 多种启动选项
-
-#### 方式1：智能启动（推荐）
-```bash
-./smart-start.sh
-```
-✅ 自动安装 Docker Compose（如果需要）
-✅ 自动安装 Node.js（如果需要）
-✅ 自动检测端口冲突
-✅ 提供多种启动选项
-
-#### 方式2：极简启动
-```bash
-./just-run.sh
-```
-🚀 最简单的启动方式，适用于任何环境
-
-#### 方式3：标准启动
-```bash
-./quick-start.sh
-```
-📋 需要手动安装依赖和构建
-
-#### 方式4：故障排除
-```bash
-./troubleshoot.sh
-```
-🛠️ 详细的诊断和修复工具
-
-#### 方式5：Docker Compose 直接启动
-```bash
-# 需要先构建应用
-npm run build
-
-# 标准启动
+# 一键构建并启动（自动编译应用）
 docker-compose up -d
+```
 
-# 或使用无构建版本
-docker-compose -f docker-compose.auto.yml up -d
+就这么简单！Docker Compose 会自动：
+- ✅ 构建应用镜像
+- ✅ 安装所有依赖
+- ✅ 编译 Electron 应用
+- ✅ 启动服务
+- ✅ 健康检查
 
-# 或使用简化版本
-docker-compose -f docker-compose.fallback.yml up -d
+### 🌐 访问应用
+
+启动后访问：
+- **Web 管理界面**: http://localhost:58080
+- **健康检查**: http://localhost:58080/health
+- **API 端点**: http://localhost:58080/v1/chat/completions
+
+### � 管理命令
+
+```bash
+# 查看状态
+docker-compose ps
+
+# 查看日志
+docker-compose logs -f chat2api
+
+# 停止服务
+docker-compose down
+
+# 重启服务
+docker-compose restart
+
+# 重新构建（更新后）
+docker-compose up --build -d
+```
+
+### � 高级选项
+
+#### 自定义端口
+```bash
+# 修改 docker-compose.yml 中的端口映射
+ports:
+  - "58123:58080"  # 使用端口 58123
+```
+
+#### 开发模式
+```bash
+# 使用开发配置
+docker-compose -f docker-compose.dev.yml up -d
+```
+
+#### 故障排除
+```bash
+# 运行诊断脚本
+./troubleshoot.sh
+
+# 或查看详细日志
+docker-compose logs --tail=100 chat2api
 ```
 # Access the web interface
 open http://localhost:58080

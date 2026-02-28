@@ -30,29 +30,18 @@ if [ ! -f "/app/config/config.json" ]; then
     cat > /app/config/config.json << 'EOF'
 {
   "proxyPort": 58080,
-  "loadBalanceStrategy": "round-robin",
-  "modelMappings": {},
-  "theme": "system",
-  "autoStart": true,
-  "autoStartProxy": true,
-  "minimizeToTray": false,
-  "logLevel": "info",
-  "logRetentionDays": 7,
-  "requestTimeout": 60000,
-  "retryCount": 3,
+  "loadBalanceStrategy": "round_robin",
+  "enableApiKey": true,
   "apiKeys": [],
-  "enableApiKey": false,
+  "providers": [],
   "webControl": {
     "enabled": true,
-    "enableCORS": true,
-    "allowedIPs": []
-  },
-  "providers": [],
-  "oauthProxyMode": "system"
+    "password": null
+  }
 }
 EOF
-    chown chat2api:chat2api /app/config/config.json
 fi
 
-# Switch to app user
-exec gosu chat2api "$@"
+# Start the application
+echo "🎯 Starting Chat2API..."
+exec "$@"
