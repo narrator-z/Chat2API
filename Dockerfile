@@ -1,33 +1,32 @@
-# Chat2API Docker Image
-FROM node:22-bullseye-slim
+# Chat2API Docker Image - Using Alpine for better network stability
+FROM node:22-alpine
 
 # Build arguments
 ARG NODE_ENV=production
 
-# Install system dependencies with retry and mirror
-RUN apt-get update || apt-get update && \
-    apt-get install -y --no-install-recommends \
-    libgtk-3-0 \
-    libnotify4 \
-    libnss3 \
-    libxss1 \
-    libxtst6 \
+# Install system dependencies (Alpine uses apk instead of apt-get)
+RUN apk update && apk add --no-cache \
+    gtk+3.0 \
+    libnotify \
+    nss \
+    libxscrnsaver \
+    libxtst \
     xdg-utils \
-    libatspi2.0-0 \
-    libdrm2 \
-    libxcomposite1 \
-    libxdamage1 \
-    libxrandr2 \
-    libgbm1 \
-    libxkbcommon0 \
-    libasound2 \
+    at-spi2-core \
+    libdrm \
+    libxcomposite \
+    libxdamage \
+    libxrandr \
+    mesa-gbm \
+    libxkbcommon \
+    alsa-lib \
     wget \
     curl \
     xvfb \
-    gosu \
+    su-exec \
     git \
     ca-certificates \
-    && rm -rf /var/lib/apt/lists/*
+    chromium
 
 # Set working directory
 WORKDIR /app
@@ -49,7 +48,7 @@ RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 RUN mkdir -p /app/config /app/logs
 
 # Create app user
-RUN useradd -m -u 1000 chat2api && \
+RUN adduser -D -u 1000 chat2api && \
     chown -R chat2api:chat2api /app
 
 # Switch to app user
