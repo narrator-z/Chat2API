@@ -48,7 +48,7 @@ RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 RUN mkdir -p /app/config /app/logs
 
 # Create app user
-RUN adduser -D -u 1000 chat2api && \
+RUN adduser -D -u 1001 chat2api && \
     chown -R chat2api:chat2api /app
 
 # Switch to app user
