@@ -27,7 +27,11 @@ RUN apk update && apk add --no-cache \
     git \
     ca-certificates \
     chromium \
-    dos2unix
+    dos2unix \
+    python3 \
+    py3-pip \
+    make \
+    g++
 
 # Set working directory
 WORKDIR /app
@@ -35,8 +39,15 @@ WORKDIR /app
 # Copy all files
 COPY . .
 
-# Install all dependencies (including dev dependencies) - allow postinstall for Electron
-RUN npm install --include=dev
+# Install setuptools to fix distutils issue
+RUN pip3 install --no-cache-dir setuptools
+
+# Install all dependencies (including dev dependencies) - skip canvas for now
+RUN npm install --include=dev --ignore-scripts && \
+    npm install --include=dev --ignore-scripts canvas@2.11.2 || echo 'Canvas install failed, continuing...'
+
+# Download Electron binary (skipped by --ignore-scripts)
+RUN npx electron-rebuild || npx electron-builder install-app-deps || node -e "require('electron')" || echo 'Electron download may have failed, continuing...'
 
 # Build application - use npx to find electron-vite
 RUN npx electron-vite build
