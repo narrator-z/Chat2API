@@ -48,15 +48,15 @@ RUN dos2unix /usr/local/bin/docker-entrypoint.sh && \
     chown root:root /usr/local/bin/docker-entrypoint.sh && \
     ls -la /usr/local/bin/docker-entrypoint.sh
 
-# Create data directories
-RUN mkdir -p /app/config /app/logs
-
 # Create app user
-RUN adduser -D -u 1001 chat2api && \
-    chown -R chat2api:chat2api /app
+RUN adduser -D -u 1001 chat2api
 
-# Switch to app user
-USER chat2api
+# Create data directories with proper ownership
+RUN mkdir -p /app/config /app/logs && \
+    chown -R chat2api:chat2api /app/config /app/logs
+
+# Note: Container runs as root for entrypoint, then drops to chat2api
+# Switch to app user is handled by su-exec in CMD
 
 # Set environment
 ENV NODE_ENV=${NODE_ENV}
@@ -72,5 +72,5 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
 # Set entrypoint
 ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
 
-# Start application
-CMD ["sh", "-c", "cd /app && export ELECTRON_IS_DEV=0 && export NODE_ENV=production && xvfb-run --auto-servernum --server-args='-screen 0 1024x768x24' node_modules/.bin/electron ."]
+# Start application with su-exec to drop privileges to chat2api
+CMD ["sh", "-c", "cd /app && export ELECTRON_IS_DEV=0 && export NODE_ENV=production && su-exec chat2api xvfb-run --auto-servernum --server-args='-screen 0 1024x768x24' node_modules/.bin/electron ."]

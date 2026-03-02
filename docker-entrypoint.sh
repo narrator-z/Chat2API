@@ -18,11 +18,10 @@ if [ -f "/usr/share/zoneinfo/$TZ" ]; then
     echo "$TZ" > /etc/timezone
 fi
 
-# Create necessary directories
+# Create necessary directories (if not exist)
 mkdir -p /app/config /app/logs
 
-# Set permissions
-chown -R chat2api:chat2api /app
+# Note: Permissions should be set at build time or via volume mount
 
 # Check for existing configuration
 if [ ! -f "/app/config/config.json" ]; then
