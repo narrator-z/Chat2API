@@ -35,11 +35,8 @@ WORKDIR /app
 # Copy all files
 COPY . .
 
-# Install all dependencies (including dev dependencies) - skip postinstall
-RUN npm install --include=dev --ignore-scripts
-
-# Download Electron binary (skipped by --ignore-scripts)
-RUN npx electron-rebuild || npx electron-builder install-app-deps || node -e "require('electron')" || echo 'Electron download may have failed, continuing...'
+# Install all dependencies (including dev dependencies) - allow postinstall for Electron
+RUN npm install --include=dev
 
 # Build application - use npx to find electron-vite
 RUN npx electron-vite build
