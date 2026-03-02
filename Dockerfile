@@ -38,6 +38,9 @@ COPY . .
 # Install all dependencies (including dev dependencies) - skip postinstall
 RUN npm install --include=dev --ignore-scripts
 
+# Download Electron binary (skipped by --ignore-scripts)
+RUN npx electron-rebuild || npx electron-builder install-app-deps || node -e "require('electron')" || echo 'Electron download may have failed, continuing...'
+
 # Build application - use npx to find electron-vite
 RUN npx electron-vite build
 
@@ -73,4 +76,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
 ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
 
 # Start application with su-exec to drop privileges to chat2api
-CMD ["sh", "-c", "Xvfb :99 -screen 0 1024x768x24 & export DISPLAY=:99 && cd /app && export ELECTRON_IS_DEV=0 && export NODE_ENV=production && su-exec chat2api node_modules/.bin/electron ."]
+CMD ["sh", "-c", "rm -f /tmp/.X*-lock /tmp/.X11-unix/X* 2>/dev/null; Xvfb :99 -screen 0 1024x768x24 & export DISPLAY=:99 && cd /app && export ELECTRON_IS_DEV=0 && export NODE_ENV=production && su-exec chat2api node_modules/.bin/electron ."]
