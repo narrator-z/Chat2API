@@ -40,7 +40,7 @@ WORKDIR /app
 COPY . .
 
 # Install setuptools to fix distutils issue
-RUN pip3 install --no-cache-dir setuptools
+RUN pip3 install --no-cache-dir --break-system-packages setuptools
 
 # Install all dependencies (including dev dependencies) - skip canvas for now
 RUN npm install --include=dev --ignore-scripts && \
