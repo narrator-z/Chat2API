@@ -40,9 +40,10 @@ RUN npm install --include=dev --ignore-scripts
 # Build application - use npx to find electron-vite
 RUN npx electron-vite build
 
-# Copy entrypoint script
+# Copy entrypoint script and fix line endings
 COPY docker-entrypoint.sh /usr/local/bin/
-RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+RUN sed -i 's/\r$//' /usr/local/bin/docker-entrypoint.sh && \
+    chmod +x /usr/local/bin/docker-entrypoint.sh
 
 # Create data directories
 RUN mkdir -p /app/config /app/logs
