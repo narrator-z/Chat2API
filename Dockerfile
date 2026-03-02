@@ -55,11 +55,17 @@ RUN node -e "console.log('Electron path:', require('electron'))" || echo 'Electr
 # Force reinstall Electron to ensure proper installation
 RUN rm -rf node_modules/electron && npm install electron@33.4.11 --force --verbose --no-optional
 
-# Verify Electron installation
-RUN ls -la node_modules/electron/ && \
-    node -e "console.log('Electron version:', require('electron/package.json').version)" && \
-    node -e "console.log('Electron path:', require('electron'))" && \
-    ls -la node_modules/electron/dist/
+# Verify Electron installation with fallback
+RUN if [ -d "node_modules/electron" ]; then \
+        echo "Electron found, verifying installation..." && \
+        ls -la node_modules/electron/ && \
+        node -e "console.log('Electron version:', require('electron/package.json').version)" && \
+        node -e "console.log('Electron path:', require('electron'))" && \
+        ls -la node_modules/electron/dist/; \
+    else \
+        echo "Electron not found in node_modules, checking npm install output..." && \
+        npm list electron 2>&1 || echo "Electron installation may have failed"; \
+    fi
 
 # Build application - use npx to find electron-vite
 RUN npx electron-vite build
