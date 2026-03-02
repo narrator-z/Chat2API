@@ -23,6 +23,7 @@ RUN apk update && apk add --no-cache \
     wget \
     curl \
     xvfb \
+    xorg-server-xvfb \
     su-exec \
     git \
     ca-certificates \
