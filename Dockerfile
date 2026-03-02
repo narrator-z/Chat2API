@@ -26,7 +26,8 @@ RUN apk update && apk add --no-cache \
     su-exec \
     git \
     ca-certificates \
-    chromium
+    chromium \
+    dos2unix
 
 # Set working directory
 WORKDIR /app
@@ -42,7 +43,7 @@ RUN npx electron-vite build
 
 # Copy entrypoint script and fix line endings
 COPY docker-entrypoint.sh /usr/local/bin/
-RUN sed -i 's/\r$//' /usr/local/bin/docker-entrypoint.sh && \
+RUN dos2unix /usr/local/bin/docker-entrypoint.sh && \
     chmod +x /usr/local/bin/docker-entrypoint.sh
 
 # Create data directories
