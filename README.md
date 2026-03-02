@@ -138,6 +138,7 @@ For detailed setup instructions, see [QUICK_START.md](QUICK_START.md).
 ## ✨ Features
 
 - OpenAI Compatible API: Provides standard OpenAI-compatible API endpoints for seamless integration
+- 🔧 **Function Calling Support**: Full Function Calling capability via Prompt Engineering for all providers
 - Multi-Provider Support: Connect DeepSeek, GLM, Kimi, MiniMax, Qwen, Z.ai and more
 - Dashboard Monitoring: Real-time request traffic, token usage, and success rates
 - API Key Management: Generate and manage keys for your local proxy
@@ -147,6 +148,65 @@ For detailed setup instructions, see [QUICK_START.md](QUICK_START.md).
 - System Tray Integration: Quick access to status from menu bar
 - Multilingual: English and Simplified Chinese support
 - Modern UI: Clean, responsive interface with dark/light theme support
+
+## 🔧 Function Calling
+
+Chat2API implements full Function Calling capability through **Prompt Engineering** and **Stream Parsing**, enabling tool use for all supported models without relying on native Function Calling APIs.
+
+### How It Works
+
+1. **Protocol Definition**: Design a text protocol that models can easily understand and parse
+   ```
+   [function_calls]
+   [call:tool_name]{"argument": "value"}[/call]
+   [/function_calls]
+   ```
+
+2. **Prompt Injection**: Convert OpenAI-format `tools` definitions into System Prompt
+
+3. **Output Interception**: Real-time interception of protocol text during streaming
+
+4. **Format Restoration**: Extract protocol content and wrap as OpenAI-format `tool_calls`
+
+### Usage
+
+```python
+from openai import OpenAI
+
+client = OpenAI(
+    api_key="your-api-key",
+    base_url="http://localhost:8080/v1"
+)
+
+# Define tools
+tools = [{
+    "type": "function",
+    "function": {
+        "name": "get_weather",
+        "description": "Get current weather",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "location": {"type": "string", "description": "City name"}
+            },
+            "required": ["location"]
+        }
+    }
+}]
+
+# Call model
+response = client.chat.completions.create(
+    model="deepseek-chat",
+    messages=[{"role": "user", "content": "What's the weather in Beijing?"}],
+    tools=tools
+)
+
+# Handle tool calls
+if response.choices[0].message.tool_calls:
+    for tool_call in response.choices[0].message.tool_calls:
+        print(f"Tool: {tool_call.function.name}")
+        print(f"Args: {tool_call.function.arguments}")
+```
 
 ## 🤖 Supported Providers
 
