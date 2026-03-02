@@ -44,7 +44,8 @@ RUN npx electron-vite build
 # Copy entrypoint script and fix line endings
 COPY docker-entrypoint.sh /usr/local/bin/
 RUN dos2unix /usr/local/bin/docker-entrypoint.sh && \
-    chmod +x /usr/local/bin/docker-entrypoint.sh && \
+    chmod 755 /usr/local/bin/docker-entrypoint.sh && \
+    chown root:root /usr/local/bin/docker-entrypoint.sh && \
     ls -la /usr/local/bin/docker-entrypoint.sh
 
 # Create data directories
