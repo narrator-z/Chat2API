@@ -23,7 +23,6 @@ RUN apk update && apk add --no-cache \
     wget \
     curl \
     xvfb \
-    xorg-server-xvfb \
     su-exec \
     git \
     ca-certificates \
@@ -74,4 +73,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
 ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
 
 # Start application with su-exec to drop privileges to chat2api
-CMD ["sh", "-c", "cd /app && export ELECTRON_IS_DEV=0 && export NODE_ENV=production && su-exec chat2api /usr/bin/xvfb-run --auto-servernum --server-args='-screen 0 1024x768x24' node_modules/.bin/electron ."]
+CMD ["sh", "-c", "Xvfb :99 -screen 0 1024x768x24 & export DISPLAY=:99 && cd /app && export ELECTRON_IS_DEV=0 && export NODE_ENV=production && su-exec chat2api node_modules/.bin/electron ."]
