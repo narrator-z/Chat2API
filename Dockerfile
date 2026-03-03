@@ -47,8 +47,15 @@ COPY . .
 RUN pip3 install --no-cache-dir --break-system-packages setuptools
 
 # Install all dependencies (excluding canvas to avoid compilation issues)
-RUN npm install --include=dev --ignore-scripts && \
-    npm install --include=dev --ignore-scripts electron electron-vite
+# Use retry and timeout settings for unstable network
+RUN npm config set registry https://registry.npmmirror.com && \
+    npm config set fetch-retry-mintimeout 20000 && \
+    npm config set fetch-retry-maxtimeout 120000 && \
+    npm config set fetch-retries 5 && \
+    npm install --include=dev --ignore-scripts --timeout=300000 || \
+    (echo "First attempt failed, retrying..." && \
+     npm install --include=dev --ignore-scripts --timeout=300000) && \
+    npm install --include=dev --ignore-scripts electron electron-vite --timeout=300000
 
 # Build application - use npx to find electron-vite
 RUN npx electron-vite build
