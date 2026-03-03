@@ -64,7 +64,7 @@ RUN npx electron-vite build
 RUN rm -rf node_modules/electron && \
     npm install electron@^33.0.2 --force --no-optional --timeout=300000 && \
     npm install electron-builder --force --no-optional --timeout=300000 && \
-    npm run postinstall && \
+    npx electron-builder install-app-deps && \
     (ls -la node_modules/ | grep electron || echo "Electron not found in node_modules") && \
     (ls -la node_modules/electron/ || echo "Electron directory missing") && \
     (node -e "console.log('Electron installed:', require('electron'))" || echo 'Electron verification failed') && \
