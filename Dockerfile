@@ -42,30 +42,8 @@ COPY . .
 # Install setuptools to fix distutils issue
 RUN pip3 install --no-cache-dir --break-system-packages setuptools
 
-# Install all dependencies (including dev dependencies) - skip canvas for now
-RUN npm install --include=dev --ignore-scripts && \
-    npm install --include=dev --ignore-scripts canvas@2.11.2 || echo 'Canvas install failed, continuing...'
-
-# Download Electron binary (skipped by --ignore-scripts)
-RUN npx electron-rebuild || npx electron-builder install-app-deps || node -e "require('electron')" || echo 'Electron download may have failed, continuing...'
-
-# Ensure Electron is properly installed
-RUN node -e "console.log('Electron path:', require('electron'))" || echo 'Electron verification failed'
-
-# Force reinstall Electron to ensure proper installation
-RUN rm -rf node_modules/electron && npm install electron@33.4.11 --force --verbose --no-optional
-
-# Verify Electron installation with fallback
-RUN if [ -d "node_modules/electron" ]; then \
-        echo "Electron found, verifying installation..." && \
-        ls -la node_modules/electron/ && \
-        node -e "console.log('Electron version:', require('electron/package.json').version)" && \
-        node -e "console.log('Electron path:', require('electron'))" && \
-        ls -la node_modules/electron/dist/; \
-    else \
-        echo "Electron not found in node_modules, checking npm install output..." && \
-        npm list electron 2>&1 || echo "Electron installation may have failed"; \
-    fi
+# Install all dependencies (including dev dependencies) in one step
+RUN npm install --include=dev --verbose
 
 # Build application - use npx to find electron-vite
 RUN npx electron-vite build
