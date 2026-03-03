@@ -63,6 +63,7 @@ RUN npx electron-vite build
 # Force reinstall Electron to ensure binary is downloaded
 RUN rm -rf node_modules/electron && \
     npm install electron@^33.0.2 --force --no-optional --timeout=300000 && \
+    npm install electron-builder --force --no-optional --timeout=300000 && \
     npm run postinstall && \
     (ls -la node_modules/ | grep electron || echo "Electron not found in node_modules") && \
     (ls -la node_modules/electron/ || echo "Electron directory missing") && \
