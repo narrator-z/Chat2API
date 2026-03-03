@@ -46,8 +46,9 @@ COPY . .
 # Install setuptools to fix distutils issue
 RUN pip3 install --no-cache-dir --break-system-packages setuptools
 
-# Install all dependencies (including dev dependencies) in one step
-RUN npm install --include=dev --verbose
+# Install all dependencies (excluding canvas to avoid compilation issues)
+RUN npm install --include=dev --ignore-scripts && \
+    npm install --include=dev --ignore-scripts electron electron-vite
 
 # Build application - use npx to find electron-vite
 RUN npx electron-vite build
