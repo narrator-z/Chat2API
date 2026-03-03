@@ -60,6 +60,11 @@ RUN npm config set registry https://registry.npmmirror.com && \
 # Build application - use npx to find electron-vite
 RUN npx electron-vite build
 
+# Force reinstall Electron to ensure binary is downloaded
+RUN rm -rf node_modules/electron && \
+    npm install electron@33.4.11 --force --no-optional --timeout=300000 && \
+    node -e "console.log('Electron installed:', require('electron'))" || echo 'Electron verification failed'
+
 # Copy entrypoint script and fix line endings
 COPY docker-entrypoint.sh /usr/local/bin/
 RUN dos2unix /usr/local/bin/docker-entrypoint.sh && \
