@@ -31,7 +31,11 @@ RUN apk update && apk add --no-cache \
     python3 \
     py3-pip \
     make \
-    g++
+    g++ \
+    pixman-dev \
+    pangomm-dev \
+    libjpeg-turbo-dev \
+    pango-dev
 
 # Set working directory
 WORKDIR /app
