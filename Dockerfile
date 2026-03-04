@@ -102,4 +102,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
 ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
 
 # Start application with su-exec to drop privileges to chat2api
-CMD ["sh", "-c", "rm -f /tmp/.X*-lock /tmp/.X11-unix/X* 2>/dev/null; Xvfb :99 -screen 0 1024x768x24 & export DISPLAY=:99 && cd /app && export ELECTRON_IS_DEV=0 && export NODE_ENV=production && su-exec chat2api node -e \"console.log('Testing Electron...'); try { const electron = require('electron'); console.log('Electron loaded successfully:', electron); } catch (e) { console.error('Electron load failed:', e); process.exit(1); }\" && su-exec chat2api node_modules/.bin/electron ."]
+CMD ["sh", "-c", "rm -f /tmp/.X*-lock /tmp/.X11-unix/X* 2>/dev/null; Xvfb :99 -screen 0 1024x768x24 & export DISPLAY=:99 && cd /app && export ELECTRON_IS_DEV=0 && export NODE_ENV=production && su-exec chat2api node -e \"console.log('Testing Electron...'); try { const electron = require('electron'); console.log('Electron loaded successfully:', electron); } catch (e) { console.error('Electron load failed:', e); process.exit(1); }\" && su-exec chat2api npx electron-vite preview"]
