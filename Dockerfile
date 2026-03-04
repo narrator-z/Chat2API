@@ -5,7 +5,8 @@ FROM node:22-alpine
 ARG NODE_ENV=production
 
 # Install system dependencies (Alpine uses apk instead of apt-get)
-RUN apk update && apk add --no-cache \
+RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories && \
+    apk update && apk add --no-cache \
     gtk+3.0 \
     libnotify \
     nss \
