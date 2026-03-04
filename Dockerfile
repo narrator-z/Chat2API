@@ -47,28 +47,19 @@ COPY . .
 # Install setuptools to fix distutils issue
 RUN pip3 install --no-cache-dir --break-system-packages setuptools
 
-# Install all dependencies (excluding canvas to avoid compilation issues)
-# Use retry and timeout settings for unstable network
+# Install all dependencies
 RUN npm config set registry https://registry.npmmirror.com && \
     npm config set fetch-retry-mintimeout 20000 && \
     npm config set fetch-retry-maxtimeout 120000 && \
     npm config set fetch-retries 5 && \
-    npm install --include=dev --ignore-scripts --timeout=300000 || \
-    (echo "First attempt failed, retrying..." && \
-     npm install --include=dev --ignore-scripts --timeout=300000) && \
-    npm install --include=dev --ignore-scripts electron electron-vite --timeout=300000
+    npm install --include=dev --timeout=300000
 
-# Build application - use npx to find electron-vite
+# Build application
 RUN npx electron-vite build
 
 # Force reinstall Electron to ensure binary is downloaded
-RUN rm -rf node_modules/electron && \
-    npm install electron@^33.0.2 --force --no-optional --timeout=300000 && \
-    npm install electron-vite --force --no-optional --timeout=300000 && \
-    (ls -la node_modules/ | grep electron || echo "Electron not found in node_modules") && \
-    (ls -la node_modules/electron/ || echo "Electron directory missing") && \
-    (node -e "console.log('Electron installed:', require('electron'))" || echo 'Electron verification failed') && \
-    (node -e "console.log('Electron path:', require.resolve('electron'))" || echo 'Cannot resolve electron')
+RUN npm install electron@^33.0.2 --force --no-optional --timeout=300000 && \
+    npm install electron-vite --force --no-optional --timeout=300000
 
 # Copy entrypoint script and fix line endings
 COPY docker-entrypoint.sh /usr/local/bin/
