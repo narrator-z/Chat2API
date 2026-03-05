@@ -60,7 +60,7 @@ RUN npm config set registry https://registry.npmmirror.com && \
 COPY . .
 
 # Build application
-RUN npx electron-vite build
+RUN ./node_modules/.bin/electron-vite build
 
 # Force reinstall Electron to ensure binary is downloaded
 RUN npm install electron@^33.0.2 --force --no-optional --timeout=300000 && \
