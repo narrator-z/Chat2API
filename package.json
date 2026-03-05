@@ -115,6 +115,20 @@
         ]
       },
       {
+        "from": "scripts",
+        "to": "scripts",
+        "filter": [
+          "**/*"
+        ]
+      },
+      {
+        "from": "docs",
+        "to": "docs",
+        "filter": [
+          "**/*"
+        ]
+      },
+      {
         "from": "sha3_wasm_bg.7b9ca65ddd.wasm",
         "to": "sha3_wasm_bg.7b9ca65ddd.wasm"
       }

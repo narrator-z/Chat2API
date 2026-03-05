@@ -3,6 +3,27 @@
 
 set -e
 
+# Install launcher script
+if [ -f "/opt/Chat2API/resources/scripts/chat2api-launcher.sh" ]; then
+    echo "Installing Chat2API launcher script..."
+    cp /opt/Chat2API/resources/scripts/chat2api-launcher.sh /usr/local/bin/chat2api-launcher
+    chmod +x /usr/local/bin/chat2api-launcher
+    echo "Launcher script installed at /usr/local/bin/chat2api-launcher"
+fi
+
+# Install systemd service (optional)
+if [ -f "/opt/Chat2API/resources/scripts/chat2api.service" ]; then
+    read -p "Do you want to install Chat2API as a systemd service? (y/n): " -n 1 -r
+    echo
+    if [[ $REPLY =~ ^[Yy]$ ]]; then
+        echo "Installing systemd service..."
+        cp /opt/Chat2API/resources/scripts/chat2api.service /etc/systemd/system/
+        systemctl daemon-reload
+        systemctl enable chat2api
+        echo "Service installed. You can start it with: sudo systemctl start chat2api"
+    fi
+fi
+
 # Create user config directory
 CONFIG_DIR="$HOME/.chat2api"
 if [ ! -d "$CONFIG_DIR" ]; then
@@ -41,9 +62,17 @@ else
 fi
 
 echo "Chat2API installation completed successfully!"
-echo "You can now:"
-echo "1. Launch Chat2API from your application menu"
-echo "2. Access Web Management at http://localhost:8080 (after starting the app)"
-echo "3. Configure your AI providers in the desktop application"
+echo ""
+echo "You can now run Chat2API in several ways:"
+echo "1. Using the launcher (recommended for headless environments):"
+echo "   /usr/local/bin/chat2api-launcher"
+echo "2. Direct with virtual display:"
+echo "   export DISPLAY=:99 && Xvfb :99 -screen 0 1024x768x24 &"
+echo "   /opt/Chat2API/chat2api"
+echo "3. As a systemd service (if installed):"
+echo "   sudo systemctl start chat2api"
+echo ""
+echo "For headless environments, use the launcher script which automatically"
+echo "sets up a virtual display."
 
 exit 0
