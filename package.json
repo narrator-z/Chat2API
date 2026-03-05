@@ -238,7 +238,13 @@
         "Keywords": "ai;api;proxy;chatgpt;openai;",
         "StartupWMClass": "chat2api",
         "StartupNotify": true
-      }
+      },
+      "executableArgs": [
+        "--no-sandbox",
+        "--disable-gpu",
+        "--disable-dev-shm-usage",
+        "--disable-software-rasterizer"
+      ]
     },
     "appImage": {
       "artifactName": "${productName}-${version}-${arch}.${ext}"
