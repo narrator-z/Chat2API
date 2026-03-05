@@ -22,9 +22,17 @@ ls -la /app/node_modules/ | head -5
 echo "Installing dependencies..."
 npm install --include=dev
 
+# Reinstall Electron to ensure binary is downloaded
+echo "Reinstalling Electron..."
+npm install electron@^33.0.2 --force
+
 # Check electron-vite
 echo "Checking electron-vite..."
 ls -la /app/node_modules/.bin/ | grep electron || echo "electron-vite not found in .bin"
+
+# Check Electron binary
+echo "Checking Electron binary..."
+ls -la /app/node_modules/electron/dist/ || echo "Electron binary not found"
 
 # Try to run electron-vite directly
 echo "Testing electron-vite..."
