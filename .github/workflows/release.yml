@@ -1,9 +1,12 @@
 name: Release
 
 on:
-  push:
-    tags:
-      - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version (e.g., 1.0.0)'
+        required: true
+        default: '1.0.0'
 
 jobs:
   release:
@@ -43,23 +46,37 @@ jobs:
       - name: Build application
         run: npm run build
 
+      - name: Fix script permissions
+        run: |
+          chmod +x scripts/*.sh
+          chmod +x build/*.sh
+
       - name: Build and Publish (macOS)
         if: matrix.os == 'macos-latest'
-        run: npx electron-builder --mac --${{ matrix.arch }} --publish=onTag
+        run: |
+          # Update package.json version
+          npm version ${{ github.event.inputs.version }} --no-git-tag-version
+          npx electron-builder --mac --${{ matrix.arch }} --publish=onTag
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           ELECTRON_MIRROR: https://npmmirror.com/mirrors/electron/
 
       - name: Build and Publish (Windows)
         if: matrix.os == 'windows-latest'
-        run: npx electron-builder --win --${{ matrix.arch }} --publish=onTag
+        run: |
+          # Update package.json version
+          npm version ${{ github.event.inputs.version }} --no-git-tag-version
+          npx electron-builder --win --${{ matrix.arch }} --publish=onTag
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           ELECTRON_MIRROR: https://npmmirror.com/mirrors/electron/
 
       - name: Build and Publish (Linux)
         if: matrix.os == 'ubuntu-latest'
-        run: npx electron-builder --linux --${{ matrix.arch }} --publish=onTag
+        run: |
+          # Update package.json version
+          npm version ${{ github.event.inputs.version }} --no-git-tag-version
+          npx electron-builder --linux --${{ matrix.arch }} --publish=onTag
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           ELECTRON_MIRROR: https://npmmirror.com/mirrors/electron/
