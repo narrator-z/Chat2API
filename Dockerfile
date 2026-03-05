@@ -47,26 +47,16 @@ COPY package*.json ./
 # Install setuptools to fix distutils issue
 RUN pip3 install --no-cache-dir --break-system-packages setuptools
 
-# Install all dependencies
+# Install only production dependencies
 RUN npm config set registry https://registry.npmmirror.com && \
     npm config set fetch-retry-mintimeout 20000 && \
     npm config set fetch-retry-maxtimeout 120000 && \
     npm config set fetch-retries 5 && \
     npm config set fund false && \
-    npm install --ignore-scripts --timeout=300000 && \
-    npm install electron --save-dev --timeout=300000 && \
-    npm install electron-vite --save-dev --timeout=300000 && \
-    npm install electron-builder --save-dev --timeout=300000
+    npm install --ignore-scripts --timeout=300000
 
 # Copy all other files
 COPY . .
-
-# Build application
-RUN npx /app/node_modules/.bin/electron-vite build
-
-# Force reinstall Electron to ensure binary is downloaded
-RUN npm install electron@^33.0.2 --force --no-optional --timeout=300000 && \
-    npm install electron-vite --force --no-optional --timeout=300000
 
 # Copy entrypoint script and fix line endings
 COPY docker-entrypoint.sh /usr/local/bin/
@@ -100,4 +90,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
 ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
 
 # Start application with su-exec to drop privileges to chat2api
-CMD ["sh", "-c", "rm -f /tmp/.X*-lock /tmp/.X11-unix/X* 2>/dev/null; Xvfb :99 -screen 0 1024x768x24 & export DISPLAY=:99 && cd /app && export ELECTRON_IS_DEV=0 && export NODE_ENV=production && npm install --include=dev && npm install electron@^33.0.2 --force && npm run preview"]
+CMD ["sh", "-c", "rm -f /tmp/.X*-lock /tmp/.X11-unix/X* 2>/dev/null; Xvfb :99 -screen 0 1024x768x24 & export DISPLAY=:99 && cd /app && export ELECTRON_IS_DEV=0 && export NODE_ENV=production && npm install --include=dev && npm run preview"]
