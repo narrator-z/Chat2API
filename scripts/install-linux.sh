@@ -48,7 +48,7 @@ print_status "Installing Chat2API..."
 sudo mkdir -p "$INSTALL_DIR"
 
 # Set permissions
-sudo chown -R $USER:$USER "$INSTALL_DIR"
+sudo chown -R $USER:$(id -gn) "$INSTALL_DIR"
 sudo chmod +x "$INSTALL_DIR/chat2api"
 
 # Install dependencies
