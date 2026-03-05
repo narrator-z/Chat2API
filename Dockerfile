@@ -53,6 +53,7 @@ RUN npm config set registry https://registry.npmmirror.com && \
     npm config set fetch-retry-maxtimeout 120000 && \
     npm config set fetch-retries 5 && \
     npm config set fund false && \
+    npm install electron-builder --save-dev --timeout=300000 && \
     npm install --omit=dev --timeout=300000 && \
     npm install electron electron-vite --save-dev --timeout=300000
 
