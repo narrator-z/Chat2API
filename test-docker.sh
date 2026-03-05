@@ -18,14 +18,6 @@ export NODE_ENV=production
 echo "Checking node_modules..."
 ls -la /app/node_modules/ | head -5
 
-# Install dependencies
-echo "Installing dependencies..."
-npm install --include=dev
-
-# Reinstall Electron to ensure binary is downloaded
-echo "Reinstalling Electron..."
-npm install electron@^33.0.2 --force
-
 # Check electron-vite
 echo "Checking electron-vite..."
 ls -la /app/node_modules/.bin/ | grep electron || echo "electron-vite not found in .bin"
