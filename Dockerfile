@@ -41,8 +41,8 @@ RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories
 # Set working directory
 WORKDIR /app
 
-# Copy all files
-COPY . .
+# Copy package files first
+COPY package*.json ./
 
 # Install setuptools to fix distutils issue
 RUN pip3 install --no-cache-dir --break-system-packages setuptools
@@ -54,6 +54,9 @@ RUN npm config set registry https://registry.npmmirror.com && \
     npm config set fetch-retries 5 && \
     npm config set fund false && \
     npm install --include=dev --timeout=300000
+
+# Copy all other files
+COPY . .
 
 # Build application
 RUN npx electron-vite build
