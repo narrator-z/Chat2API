@@ -7,8 +7,15 @@ yarn-error.log*
 # Build outputs
 out/
 dist/
-build/
 build/entitlements.mac.plist
+# Ignore build directory except for scripts
+build/*
+!build/*.sh
+!build/*.desktop
+!build/*.service
+!build/*.ico
+!build/*.png
+!build/icons/
 
 # TypeScript
 *.tsbuildinfo

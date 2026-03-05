@@ -1,0 +1,21 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Chat2API
+Name[zh_CN]=Chat2API
+Comment=统一管理多个 AI 服务提供商，提供 OpenAI 兼容 API 接口
+Comment[zh_CN]=统一管理多个 AI 服务提供商，提供 OpenAI 兼容 API 接口
+Icon=chat2api
+Exec=chat2api %U
+Categories=Utility;Network;Development;
+Keywords=ai;api;proxy;chatgpt;openai;
+StartupWMClass=chat2api
+StartupNotify=true
+MimeType=application/x-chat2api-config;
+Actions=WebManagement;
+
+[Desktop Action WebManagement]
+Name=Open Web Management
+Name[zh_CN]=打开 Web 管理界面
+Exec=xdg-open http://localhost:8080
+Icon=chat2api
