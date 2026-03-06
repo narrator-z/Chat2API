@@ -56,7 +56,7 @@ jobs:
         run: |
           # Update package.json version
           npm version ${{ github.event.inputs.version }} --allow-same-version --no-git-tag-version
-          npx electron-builder --mac --${{ matrix.arch }} --publish=onTag
+          npx electron-builder --mac --${{ matrix.arch }} --publish=always
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           ELECTRON_MIRROR: https://npmmirror.com/mirrors/electron/
@@ -66,7 +66,7 @@ jobs:
         run: |
           # Update package.json version
           npm version ${{ github.event.inputs.version }} --allow-same-version --no-git-tag-version
-          npx electron-builder --win --${{ matrix.arch }} --publish=onTag
+          npx electron-builder --win --${{ matrix.arch }} --publish=always
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           ELECTRON_MIRROR: https://npmmirror.com/mirrors/electron/
@@ -76,7 +76,7 @@ jobs:
         run: |
           # Update package.json version
           npm version ${{ github.event.inputs.version }} --allow-same-version --no-git-tag-version
-          npx electron-builder --linux --${{ matrix.arch }} --publish=onTag
+          npx electron-builder --linux --${{ matrix.arch }} --publish=always
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           ELECTRON_MIRROR: https://npmmirror.com/mirrors/electron/
