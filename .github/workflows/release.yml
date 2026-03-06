@@ -1,12 +1,9 @@
 name: Release
 
 on:
-  workflow_dispatch:
-    inputs:
-      version:
-        description: 'Release version (e.g., 1.0.0)'
-        required: true
-        default: '1.0.0'
+  push:
+    tags:
+      - 'v*.*.*'
 
 jobs:
   release:
@@ -54,12 +51,7 @@ jobs:
       - name: Build and Publish (macOS)
         if: matrix.os == 'macos-latest'
         run: |
-          # Update package.json version
-          echo "Setting version to ${{ github.event.inputs.version }}"
-          npm version ${{ github.event.inputs.version }} --allow-same-version --no-git-tag-version
-          echo "Current version in package.json:"
-          cat package.json | grep '"version"'
-          npx electron-builder --mac --${{ matrix.arch }} --publish=never
+          npx electron-builder --mac --${{ matrix.arch }} --publish=always
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           ELECTRON_MIRROR: https://npmmirror.com/mirrors/electron/
@@ -67,12 +59,7 @@ jobs:
       - name: Build and Publish (Windows)
         if: matrix.os == 'windows-latest'
         run: |
-          # Update package.json version
-          echo "Setting version to ${{ github.event.inputs.version }}"
-          npm version ${{ github.event.inputs.version }} --allow-same-version --no-git-tag-version
-          echo "Current version in package.json:"
-          cat package.json | grep '"version"'
-          npx electron-builder --win --${{ matrix.arch }} --publish=never
+          npx electron-builder --win --${{ matrix.arch }} --publish=always
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           ELECTRON_MIRROR: https://npmmirror.com/mirrors/electron/
@@ -80,26 +67,7 @@ jobs:
       - name: Build and Publish (Linux)
         if: matrix.os == 'ubuntu-latest'
         run: |
-          # Update package.json version
-          echo "Setting version to ${{ github.event.inputs.version }}"
-          npm version ${{ github.event.inputs.version }} --allow-same-version --no-git-tag-version
-          echo "Current version in package.json:"
-          cat package.json | grep '"version"'
-          npx electron-builder --linux --${{ matrix.arch }} --publish=never
+          npx electron-builder --linux --${{ matrix.arch }} --publish=always
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           ELECTRON_MIRROR: https://npmmirror.com/mirrors/electron/
-
-      - name: Create Release and Upload Files
-        if: matrix.os == 'ubuntu-latest' && matrix.arch == 'x64'
-        run: |
-          # Create GitHub Release
-          gh release create v${{ github.event.inputs.version }} \
-            --title "Chat2API v${{ github.event.inputs.version }}" \
-            --notes "Release v${{ github.event.inputs.version }} - Linux headless support and Docker fixes" \
-            --draft=false
-          
-          # Upload all built files
-          gh release upload v${{ github.event.inputs.version }} dist/*
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -82,10 +82,12 @@ else
     print_warning "- GTK3, NSS, and other Electron dependencies"
 fi
 
-# Install launcher script
-print_status "Installing launcher script..."
-sudo cp "$(dirname "$0")/chat2api-launcher.sh" /usr/local/bin/chat2api-launcher
-sudo chmod +x /usr/local/bin/chat2api-launcher
+# Create launcher symlink
+if [ ! -L "/usr/local/bin/chat2api-launcher" ]; then
+    sudo ln -sf "$INSTALL_DIR/resources/scripts/chat2api-launcher.sh" "/usr/local/bin/chat2api-launcher"
+    sudo chmod +x "/usr/local/bin/chat2api-launcher"
+    print_status "Launcher script installed to /usr/local/bin/chat2api-launcher"
+fi
 
 # Install systemd service (optional)
 if command -v systemctl &> /dev/null; then

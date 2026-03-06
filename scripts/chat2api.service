@@ -11,14 +11,16 @@ Environment=DISPLAY=:99
 Environment=ELECTRON_IS_DEV=0
 Environment=NODE_ENV=production
 Environment=HOME=/home/admin
+Environment=XAUTHORITY=/home/admin/.Xauthority
+# Disable GPU acceleration to fix initialization errors
+Environment=MOZ_DISABLE_WEBGL=1
+Environment=LIBGL_ALWAYS_SOFTWARE=1
+Environment=ELECTRON_DISABLE_GPU=1
 ExecStart=/usr/local/bin/chat2api-launcher
 Restart=always
 RestartSec=10
 StandardOutput=journal
 StandardError=journal
-
-# Allow X11 access
-Environment=XAUTHORITY=/home/admin/.Xauthority
 
 [Install]
 WantedBy=multi-user.target
