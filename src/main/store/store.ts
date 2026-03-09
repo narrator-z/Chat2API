@@ -554,6 +554,11 @@ class StoreManager {
       providerId?: string
       requestId?: string
       data?: Record<string, unknown>
+      model?: string
+      actualModel?: string
+      latency?: number
+      isStream?: boolean
+      error?: string
     }
   ): LogEntry {
     this.ensureInitialized()

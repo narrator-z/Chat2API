@@ -424,6 +424,17 @@ export class QwenStreamHandler {
     console.log('[Qwen] Content-Encoding:', contentEncoding)
 
     let buffer = ''
+    let streamEnded = false
+
+    const safeEnd = (data?: string) => {
+      if (streamEnded) return
+      streamEnded = true
+      if (data) {
+        transStream.end(data)
+      } else {
+        transStream.end()
+      }
+    }
 
     const processBuffer = () => {
       while (true) {
@@ -577,7 +588,7 @@ export class QwenStreamHandler {
                         created: this.created,
                       })}\n\n`
                     )
-                    transStream.end('data: [DONE]\n\n')
+                    safeEnd('data: [DONE]\n\n')
                     this.onEnd?.(this.sessionId)
                   }
                 }
@@ -596,7 +607,7 @@ export class QwenStreamHandler {
                   created: this.created,
                 })}\n\n`
               )
-              transStream.end('data: [DONE]\n\n')
+              safeEnd('data: [DONE]\n\n')
             }
           } catch (err) {
             console.error('[Qwen] Parse error:', err, 'Data:', eventData.substring(0, 200))
@@ -605,7 +616,7 @@ export class QwenStreamHandler {
 
         if (eventType === 'complete') {
           console.log('[Qwen] Received complete event')
-          if (!transStream.closed && !this.stopSent) {
+          if (!streamEnded && !this.stopSent) {
             this.stopSent = true
             
             // Flush any remaining tool calls
@@ -629,7 +640,7 @@ export class QwenStreamHandler {
                 created: this.created,
               })}\n\n`
             )
-            transStream.end('data: [DONE]\n\n')
+            safeEnd('data: [DONE]\n\n')
           }
         }
       }
@@ -651,6 +662,7 @@ export class QwenStreamHandler {
       const chunks: Buffer[] = []
       stream.on('data', (chunk: Buffer) => chunks.push(chunk))
       stream.once('end', () => {
+        if (streamEnded) return
         try {
           const compressedData = Buffer.concat(chunks)
           ZstdCodec.run((zstd) => {
@@ -659,32 +671,34 @@ export class QwenStreamHandler {
             const decompressedStr = Buffer.from(decompressed).toString('utf8')
             buffer = decompressedStr
             processBuffer()
-            transStream.end('data: [DONE]\n\n')
+            safeEnd('data: [DONE]\n\n')
           })
         } catch (err) {
           console.error('[Qwen] Zstd decompression error:', err)
-          transStream.end('data: [DONE]\n\n')
+          safeEnd('data: [DONE]\n\n')
         }
       })
       stream.once('error', (err: Error) => {
         console.error('[Qwen] Stream error:', err)
-        transStream.end('data: [DONE]\n\n')
+        safeEnd('data: [DONE]\n\n')
       })
       return transStream
     }
 
     decompressStream.on('data', (bufferChunk: Buffer) => {
+      if (streamEnded) return
       buffer += bufferChunk.toString()
       processBuffer()
     })
     decompressStream.once('error', (err: Error) => {
       console.error('[Qwen] Stream error:', err)
-      transStream.end('data: [DONE]\n\n')
+      safeEnd('data: [DONE]\n\n')
     })
     decompressStream.once('close', () => {
       console.log('[Qwen] Stream closed')
+      if (streamEnded) return
       processBuffer()
-      transStream.end('data: [DONE]\n\n')
+      safeEnd('data: [DONE]\n\n')
     })
 
     return transStream
@@ -895,10 +909,12 @@ export class QwenStreamHandler {
       }
 
       decompressStream.on('data', (chunk: Buffer) => {
+        if (resolved) return
         buffer += chunk.toString()
         processBuffer()
       })
       decompressStream.once('error', (err: Error) => {
+        if (resolved) return
         console.error('[Qwen] Non-stream error:', err)
         reject(err)
       })

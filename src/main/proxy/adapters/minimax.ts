@@ -627,7 +627,7 @@ export class MiniMaxAdapter {
       console.log('[MiniMax] Message sent, chat_id:', chatId, 'msg_id:', msgId)
     }
     
-    if (request.stream !== false) {
+    if (request.stream === true) {
       // Only delete chat in single-turn mode with deleteAfterChat enabled
       // Import shouldDeleteSession from forwarder
       const shouldDeleteSession = () => {
@@ -669,7 +669,7 @@ export class MiniMaxAdapter {
       headers: {},
       config: {} as any,
       data: {
-        id: chatId,
+        id: String(chatId),
         model: this.model,
         object: 'chat.completion',
         choices: [{

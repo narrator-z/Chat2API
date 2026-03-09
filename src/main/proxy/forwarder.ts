@@ -1173,7 +1173,7 @@ export class RequestForwarder {
           }
         : undefined
 
-      if (request.stream !== false && stream) {
+      if (request.stream === true && stream) {
         console.log('[forwardMiniMax] Using polling stream')
         
         if (deleteChatCallback) {

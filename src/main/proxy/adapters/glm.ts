@@ -755,7 +755,7 @@ export class GLMStreamHandler {
             
             // Process tool call interception - use toolCallState's buffer for accumulation
             const baseChunk = createBaseChunk(this.conversationId, this.model, this.created)
-            const { chunks: outputChunks, isBuffering } = processStreamContent(
+            const { chunks: outputChunks } = processStreamContent(
               chunk, 
               this.toolCallState, 
               baseChunk, 
@@ -864,15 +864,14 @@ export class GLMStreamHandler {
   async handleNonStream(stream: any): Promise<any> {
     return new Promise((resolve, reject) => {
       const cachedParts: any[] = []
-      let conversationId = ''
 
       const parser = createParser({
         onEvent: (event: any) => {
           try {
             const result = JSON.parse(event.data)
 
-            if (!conversationId && result.conversation_id) {
-              conversationId = result.conversation_id
+            if (!this.conversationId && result.conversation_id) {
+              this.conversationId = result.conversation_id
             }
 
             if (result.status !== 'finish') {
@@ -946,7 +945,7 @@ export class GLMStreamHandler {
               const { content: cleanContent, toolCalls } = parseToolCallsFromText(fullText, 'glm')
 
               resolve({
-                id: conversationId,
+                id: this.conversationId,
                 model: this.model,
                 object: 'chat.completion',
                 choices: [
@@ -975,7 +974,7 @@ export class GLMStreamHandler {
       stream.once('error', reject)
       stream.once('close', () => {
         resolve({
-          id: conversationId,
+          id: this.conversationId,
           model: this.model,
           object: 'chat.completion',
           choices: [

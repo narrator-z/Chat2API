@@ -213,7 +213,7 @@ router.post('/completions', async (ctx: Context) => {
       isStream: request.stream,
     })
 
-    if (request.stream && result.stream) {
+    if (request.stream === true && result.stream) {
       ctx.set('Content-Type', 'text/event-stream')
       ctx.set('Cache-Control', 'no-cache')
       ctx.set('Connection', 'keep-alive')

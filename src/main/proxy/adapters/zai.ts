@@ -495,6 +495,7 @@ export class ZaiStreamHandler {
   private lastMessageId: string = ''
   private toolCallState: ToolCallState
   private sentRole: boolean = false
+  private streamEnded: boolean = false
 
   constructor(model: string, onEnd?: (chatId: string) => void) {
     this.model = model
@@ -572,6 +573,18 @@ export class ZaiStreamHandler {
     const transStream = new PassThrough()
 
     console.log('[Z.ai] Starting stream handler...')
+    
+    let streamEnded = false
+
+    const safeEnd = (data?: string) => {
+      if (streamEnded) return
+      streamEnded = true
+      if (data) {
+        transStream.end(data)
+      } else {
+        transStream.end()
+      }
+    }
 
     const parser = createParser({
       onEvent: (event: any) => {
@@ -635,7 +648,7 @@ export class ZaiStreamHandler {
                 created: this.created,
               })}\n\n`
             )
-            transStream.end('data: [DONE]\n\n')
+            safeEnd('data: [DONE]\n\n')
             if (this.onEnd) {
               try {
                 this.onEnd(this.chatId)
@@ -655,7 +668,7 @@ export class ZaiStreamHandler {
                 created: this.created,
               })}\n\n`
             )
-            transStream.end('data: [DONE]\n\n')
+            safeEnd('data: [DONE]\n\n')
           }
         } catch (err) {
           console.error('[Z.ai] Stream parse error:', err)
@@ -663,14 +676,17 @@ export class ZaiStreamHandler {
       },
     })
 
-    stream.on('data', (buffer: Buffer) => parser.feed(buffer.toString()))
+    stream.on('data', (buffer: Buffer) => {
+      if (streamEnded) return
+      parser.feed(buffer.toString())
+    })
     stream.once('error', (err: Error) => {
       console.error('[Z.ai] Stream error:', err)
-      transStream.end('data: [DONE]\n\n')
+      safeEnd('data: [DONE]\n\n')
     })
     stream.once('close', () => {
       console.log('[Z.ai] Stream closed')
-      transStream.end('data: [DONE]\n\n')
+      safeEnd('data: [DONE]\n\n')
     })
 
     return transStream
