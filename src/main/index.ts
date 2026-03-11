@@ -1,7 +1,7 @@
 import { app, BrowserWindow } from 'electron'
 import { join } from 'path'
 import { createWindow, getMainWindow, loadUrl, loadFile, openDevTools } from './window/manager'
-import { createTray, updateTrayIcon, destroyTray } from './tray'
+import { createTrayManager, TrayManager } from './tray/TrayManager'
 import { registerIpcHandlers } from './ipc/handlers'
 
 // Workaround for V8 JIT compiler crash on macOS ARM64 (Electron 33 bug)
@@ -42,6 +42,8 @@ if (!gotTheLock) {
   initializeApp()
 }
 
+let trayManager: TrayManager | null = null
+
 async function initializeApp(): Promise<void> {
   app.on('ready', async () => {
     await setupApp()
@@ -64,7 +66,7 @@ async function initializeApp(): Promise<void> {
 
   app.on('before-quit', () => {
     app.isQuitting = true
-    destroyTray()
+    trayManager?.destroy()
   })
 
   app.on('will-quit', () => {
@@ -84,7 +86,7 @@ async function setupApp(): Promise<void> {
 
   await registerIpcHandlers(mainWindow)
 
-  createTray(mainWindow)
+  trayManager = createTrayManager(mainWindow)
 
   await loadAppContent(mainWindow)
 

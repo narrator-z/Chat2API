@@ -10,6 +10,7 @@ import { oauthManager } from '../oauth/manager'
 import { ProxyServer } from '../proxy/server'
 import { proxyStatusManager } from '../proxy/status'
 import { sessionManager } from '../proxy/sessionManager'
+import { TrayManager } from '../tray/TrayManager'
 import type { Provider, Account, ProxyStatus, ProviderCheckResult, OAuthResult, AuthType, CredentialField, LogLevel, LogEntry, ProviderVendor, AppConfig } from '../../shared/types'
 import type { SystemPrompt, SessionConfig, SessionRecord } from '../store/types'
 
@@ -77,6 +78,7 @@ export async function registerIpcHandlers(mainWindow: BrowserWindow | null): Pro
           connections: 0,
         }
         mainWindow?.webContents.send(IpcChannels.PROXY_STATUS_CHANGED, status)
+        TrayManager.getInstance().updateProxyStatus(true)
       } else {
         proxyServer = null
       }
@@ -107,6 +109,7 @@ export async function registerIpcHandlers(mainWindow: BrowserWindow | null): Pro
         proxyServer = null
         proxyStartTime = null
         mainWindow?.webContents.send(IpcChannels.PROXY_STATUS_CHANGED, status)
+        TrayManager.getInstance().updateProxyStatus(false)
       }
       
       return success

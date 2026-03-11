@@ -468,6 +468,17 @@ const sessionAPI = {
     ipcRenderer.invoke(IpcChannels.SESSION_CLEAN_EXPIRED),
 }
 
+const trayAPI = {
+  openDashboard: (): void => 
+    ipcRenderer.send('tray:open-dashboard'),
+  
+  setHeight: (height: number): void => 
+    ipcRenderer.send('tray:set-height', height),
+
+  quitApp: (): void =>
+    ipcRenderer.send('tray:quit-app'),
+}
+
 const electronAPI = {
   proxy: proxyAPI,
   store: storeAPI,
@@ -481,6 +492,7 @@ const electronAPI = {
   config: configAPI,
   prompts: promptsAPI,
   session: sessionAPI,
+  tray: trayAPI,
   
   on: (channel: string, callback: (...args: unknown[]) => void) => {
     const subscription = (_event: Electron.IpcRendererEvent, ...args: unknown[]) => callback(...args)

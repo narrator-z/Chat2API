@@ -9,12 +9,14 @@ import Logs from '@/pages/Logs'
 import { Settings } from '@/pages/Settings'
 import { About } from '@/pages/About'
 import { SessionManagement } from '@/pages/SessionManagement'
+import { TrayView } from '@/components/Tray/TrayView'
 import { Toaster } from '@/components/ui/toaster'
 
 function App() {
   return (
     <>
       <Routes>
+        <Route path="/tray" element={<TrayView />} />
         <Route element={<MainLayout />}>
           <Route path="/" element={<Dashboard />} />
           <Route path="/providers" element={<Providers />} />
