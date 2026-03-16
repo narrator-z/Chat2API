@@ -5,7 +5,7 @@ export type ProviderStatus = 'online' | 'offline' | 'unknown'
 export type ProviderType = 'builtin' | 'custom'
 
 // Provider vendor type (for OAuth adapters)
-export type ProviderVendor = 'deepseek' | 'glm' | 'kimi' | 'minimax' | 'qwen' | 'qwen-ai' | 'zai' | 'custom'
+export type ProviderVendor = 'deepseek' | 'glm' | 'kimi' | 'minimax' | 'qwen' | 'qwen-ai' | 'zai' | 'perplexity' | 'custom'
 
 export type AuthType = 
   | 'oauth' 
@@ -191,6 +191,8 @@ export interface ToolPromptConfig {
   clientDetection: boolean
   preferredVariant?: string
   skipKnownClients: string[]
+  protocolFormat: 'bracket' | 'xml'
+  clientInjectionBehavior?: 'skip' | 'replace' | 'append'
 }
 
 export interface SessionConfig {

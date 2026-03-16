@@ -287,11 +287,18 @@ export class OAuthManager extends EventEmitter {
 
       let validationTimeout: NodeJS.Timeout | null = null
 
-      const tokenFoundHandler = async (event: { key: string; value: string }) => {
+      const tokenFoundHandler = async (event: { key: string; value: string; allCookies?: Record<string, string> }) => {
         console.log('[OAuthManager] tokenFoundHandler called, isValidating:', isValidating, 'event:', event.key, event.value.substring(0, 50) + '...')
 
         // Store the token
         collectedTokens[event.key] = event.value
+        
+        // Store all cookies if provided (needed for Cloudflare-protected requests)
+        if (event.allCookies) {
+          collectedTokens['cookies'] = event.allCookies as any
+          console.log('[OAuthManager] Stored all cookies:', Object.keys(event.allCookies).length, 'cookies')
+        }
+        
         console.log('[OAuthManager] Collected tokens:', Object.keys(collectedTokens))
 
         // For MiniMax, we need both token and realUserID before validating

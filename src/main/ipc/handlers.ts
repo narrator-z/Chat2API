@@ -174,9 +174,7 @@ export async function registerIpcHandlers(mainWindow: BrowserWindow | null): Pro
   })
 
   ipcMain.handle(IpcChannels.CONFIG_UPDATE, async (_, updates: Partial<AppConfig>) => {
-    const currentConfig = storeManager.getConfig()
-    const newConfig = { ...currentConfig, ...updates }
-    storeManager.setConfig(newConfig)
+    const newConfig = storeManager.updateConfig(updates)
     
     BrowserWindow.getAllWindows().forEach((win) => {
       if (!win.isDestroyed()) {

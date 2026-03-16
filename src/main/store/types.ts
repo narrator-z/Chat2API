@@ -291,12 +291,27 @@ export interface SessionConfig {
 }
 
 /**
+ * Injection Strategy
+ * Controls whether to inject tool prompts
+ */
+export type InjectionStrategy = 'always' | 'smart' | 'never' | 'auto'
+
+/**
+ * Client Injection Behavior
+ * Controls how to handle existing client-injected prompts
+ * - skip: Skip injection when client prompt detected (default)
+ * - clean: Clean client prompt and re-inject
+ * - append: Append new prompt (may cause duplicates)
+ */
+export type ClientInjectionBehavior = 'skip' | 'clean' | 'append'
+
+/**
  * Tool Prompt Configuration Interface
  * Controls how tool prompts are injected for models without native function calling
  */
 export interface ToolPromptConfig {
-  /** Injection mode: 'always' injects for all requests, 'smart' only for complex queries, 'never' disables injection, 'auto' detects client automatically */
-  mode: 'always' | 'smart' | 'never' | 'auto'
+  /** Injection strategy: 'always' injects for all requests, 'smart' only for complex queries, 'never' disables injection, 'auto' detects client automatically */
+  mode: InjectionStrategy
   /** Message length threshold for smart mode (default 50) */
   smartThreshold: number
   /** Keywords that trigger injection in smart mode */
@@ -307,6 +322,10 @@ export interface ToolPromptConfig {
   preferredVariant?: string
   /** Clients to skip injection for */
   skipKnownClients: string[]
+  /** Protocol format: 'bracket' for [function_calls] format, 'xml' for <tool_use> format */
+  protocolFormat: 'bracket' | 'xml'
+  /** How to handle existing client-injected prompts (default: 'skip') */
+  clientInjectionBehavior?: ClientInjectionBehavior
 }
 
 /**
@@ -560,6 +579,8 @@ export const DEFAULT_TOOL_PROMPT_CONFIG: ToolPromptConfig = {
   keywords: ['search', 'find', 'get', 'call', 'use', 'tool', 'query', 'fetch', 'read', 'write', 'list', 'delete', 'update', 'create'],
   clientDetection: true,
   skipKnownClients: ['cline', 'kilocode', 'rooCode', 'vscodeCopilot', 'cherryStudio'],
+  protocolFormat: 'bracket',
+  clientInjectionBehavior: 'skip',
 }
 
 /**
@@ -844,5 +865,51 @@ export const BUILTIN_PROVIDERS: BuiltinProviderConfig[] = [
     ],
     tokenCheckEndpoint: '/api/v1/users/user/settings',
     tokenCheckMethod: 'GET',
+  },
+  {
+    id: 'perplexity',
+    name: 'Perplexity',
+    type: 'builtin',
+    authType: 'cookie',
+    apiEndpoint: 'https://www.perplexity.ai',
+    chatPath: '/rest/sse/perplexity_ask',
+    headers: {
+      'Content-Type': 'application/json',
+      'Accept': '*/*',
+      'Origin': 'https://www.perplexity.ai',
+      'Referer': 'https://www.perplexity.ai/',
+    },
+    enabled: true,
+    description: 'Perplexity AI search assistant with multi-model support and web search enhancement',
+    supportedModels: [
+      'Auto',
+      'Turbo',
+      'PPLX-Pro',
+      'GPT-5',
+      'Gemini-2.5-Pro',
+      'Claude-Sonnet-4',
+      'Claude-Opus-4',
+      'Nemotron',
+    ],
+    modelMappings: {
+      'Auto': 'auto',
+      'Turbo': 'turbo',
+      'PPLX-Pro': 'pplx_pro',
+      'GPT-5': 'gpt5',
+      'Gemini-2.5-Pro': 'gemini25pro',
+      'Claude-Sonnet-4': 'claude4sonnet',
+      'Claude-Opus-4': 'claude4opus',
+      'Nemotron': 'nemotron',
+    },
+    credentialFields: [
+      {
+        name: 'sessionToken',
+        label: 'Session Token',
+        type: 'password',
+        required: true,
+        placeholder: 'Enter Perplexity session token',
+        helpText: 'Automatically obtained from browser or manually enter __Secure-next-auth.session-token',
+      },
+    ],
   },
 ]

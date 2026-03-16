@@ -1,57 +1,16 @@
 /**
  * Default Prompt Adapter
  * Maintains backward compatibility with existing tool prompt injection logic
+ * 
+ * Uses variants from prompt/variants/ directory for unified variant definitions
  */
 
 import { ChatMessage, ChatCompletionTool, ToolCall } from '../../types'
 import { BasePromptAdapter, PromptVariant, TransformResult, ParseResult, ToolCallFormat } from './BasePromptAdapter'
 import { ClientType } from '../../utils/promptSignatures'
 import { parseToolCallsFromText } from '../../utils/toolParser'
-
-/**
- * Default prompt variant for generic models
- */
-const DEFAULT_VARIANT: PromptVariant = {
-  id: 'default',
-  name: 'Default',
-  description: 'Default prompt variant for generic models',
-  modelPatterns: ['.*'],
-  systemPrompt: 'You are a helpful AI assistant.',
-  toolPromptTemplate: `## Available Tools
-You can invoke the following developer tools. Call a tool only when it is required and follow the JSON schema exactly when providing arguments.
-
-CRITICAL: Tool names are CASE-SENSITIVE. You MUST use the exact tool name as defined below, including any prefixes like 'default_api:'.
-
-{{TOOL_DEFINITIONS}}
-
-## Tool Call Protocol
-When you decide to call a tool, you MUST respond with NOTHING except a single [function_calls] block exactly like the template below:
-
-[function_calls]
-[call:exact_tool_name_from_list]{"argument": "value"}[/call]
-[/function_calls]
-
-CRITICAL RULES:
-1. EVERY tool call MUST start with [call:exact_tool_name] and end with [/call]
-2. You MUST use the EXACT tool name as defined in the Available Tools list (e.g., if the tool is named \`default_api:read_file\`, you MUST use \`[call:default_api:read_file]\`, NOT \`[call:read_file]\`).
-3. The content between [call:...] and [/call] MUST be a raw JSON object on ONE LINE - NO LINE BREAKS inside the JSON
-4. Do NOT wrap JSON in \`\`\`json blocks
-5. Do NOT output any other text, explanation, or reasoning before or after the [function_calls] block
-6. If you need to call multiple tools, put them all inside the same [function_calls] block, each with its own [call:...]...[/call] wrapper
-7. JSON arguments MUST be compact, all on one line, NO pretty printing, NO newlines
-8. If you are writing code or regular expressions, you MUST properly escape all backslashes and quotes inside the JSON string.
-
-EXAMPLE with multiple tools - NOTE THE JSON IS ALL ON ONE LINE:
-[function_calls]
-[call:default_api:read_file]{"filePath":"/path/to/file"}[/call]
-[call:default_api:list_dir]{"target_directory":"/path/to/dir"}[/call]
-[call:default_api:search_content]{"pattern":"example","directory":"/path/to/dir"}[/call]
-[/function_calls]
-
-When you receive a tool result, it will be in the format:
-[TOOL_RESULT for call_id] result_content`,
-  toolCallFormat: 'bracket',
-}
+import { TOOL_PROMPT_SIGNATURES, hasGeneralToolPromptSignature } from '../../constants/signatures'
+import { DEFAULT_VARIANT, XML_VARIANT } from '../../prompt/variants'
 
 /**
  * Default Prompt Adapter
@@ -60,28 +19,21 @@ When you receive a tool result, it will be in the format:
 export class DefaultPromptAdapter extends BasePromptAdapter {
   name = 'default'
   clientType: ClientType = 'unknown'
-  detectSignatures: string[] = [
-    '## Available Tools',
-    '## Tool Call Protocol',
-    '[function_calls]',
-    'TOOL_WRAP_HINT',
-    'You can invoke the following developer tools',
-    'Tool Call Formatting',
-  ]
+  
+  detectSignatures = TOOL_PROMPT_SIGNATURES.general
 
   constructor() {
     super()
     this.registerVariant(DEFAULT_VARIANT)
+    this.registerVariant(XML_VARIANT)
   }
 
   hasPromptInjected(messages: ChatMessage[]): boolean {
     const allContent = this.extractAllContent(messages)
     
-    for (const sig of this.detectSignatures) {
-      if (allContent.includes(sig)) {
-        console.log('[DefaultAdapter] Detected existing tool prompt injection, skipping')
-        return true
-      }
+    if (hasGeneralToolPromptSignature(allContent)) {
+      console.log('[DefaultAdapter] Detected existing tool prompt injection, skipping')
+      return true
     }
     
     return false
@@ -105,6 +57,14 @@ export class DefaultPromptAdapter extends BasePromptAdapter {
   }
 
   parseToolCalls(content: string): ParseResult {
+    if (content.includes('<tool_use>')) {
+      return {
+        content,
+        toolCalls: this.parseXmlToolCalls(content),
+        format: 'xml' as ToolCallFormat,
+      }
+    }
+
     const { toolCalls } = parseToolCallsFromText(content, 'default')
     
     return {
@@ -119,8 +79,47 @@ export class DefaultPromptAdapter extends BasePromptAdapter {
     }
   }
 
+  private parseXmlToolCalls(content: string): ToolCall[] {
+    const toolCalls: ToolCall[] = []
+    
+    const toolUseRegex = /<tool_use>\s*<name>([^<]+)<\/name>\s*<arguments>([\s\S]*?)<\/arguments>\s*<\/tool_use>/g
+    
+    let match
+    let index = 0
+    
+    while ((match = toolUseRegex.exec(content)) !== null) {
+      const name = match[1].trim()
+      let argsStr = match[2].trim()
+      
+      if (argsStr.startsWith('```')) {
+        argsStr = argsStr.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '')
+      }
+      
+      try {
+        const parsed = JSON.parse(argsStr)
+        toolCalls.push({
+          index: index++,
+          id: `call_${Date.now()}_${index}`,
+          type: 'function',
+          function: {
+            name,
+            arguments: JSON.stringify(parsed),
+          },
+        })
+      } catch {
+        console.warn('[DefaultAdapter] Failed to parse XML tool arguments:', argsStr)
+      }
+    }
+    
+    return toolCalls
+  }
+
   getPromptVariant(model: string, _provider?: string): PromptVariant | null {
     return DEFAULT_VARIANT
+  }
+
+  getVariantByFormat(format: 'bracket' | 'xml'): PromptVariant {
+    return format === 'xml' ? XML_VARIANT : DEFAULT_VARIANT
   }
 
   transformRequest(
@@ -138,8 +137,41 @@ export class DefaultPromptAdapter extends BasePromptAdapter {
     }
 
     const variant = this.getPromptVariant(model)
-    const toolsPrompt = this.toolsToPrompt(tools, variant)
+    const toolsPrompt = this.toolsToPrompt(tools, variant ?? undefined)
     const transformedMessages = this.injectPrompt(messages, toolsPrompt)
+
+    return {
+      messages: transformedMessages,
+      tools: undefined,
+      injected: true,
+      variant: variant ?? undefined,
+    }
+  }
+
+  transformRequestWithFormat(
+    messages: ChatMessage[],
+    tools: ChatCompletionTool[] | undefined,
+    model: string,
+    format: 'bracket' | 'xml',
+    _provider?: string,
+    skipDetection: boolean = false
+  ): TransformResult {
+    if (!tools || tools.length === 0) {
+      console.log('[DefaultAdapter] No tools to inject')
+      return { messages, tools: undefined, injected: false }
+    }
+
+    if (!skipDetection && this.hasPromptInjected(messages)) {
+      console.log('[DefaultAdapter] Detected existing prompt, skipping injection')
+      return { messages, tools: undefined, injected: false }
+    }
+
+    const variant = this.getVariantByFormat(format)
+    console.log(`[DefaultAdapter] Injecting ${format} format prompt, variant=${variant.id}`)
+    const toolsPrompt = this.toolsToPrompt(tools, variant)
+    console.log(`[DefaultAdapter] Tools prompt length: ${toolsPrompt.length}`)
+    const transformedMessages = this.injectPrompt(messages, toolsPrompt)
+    console.log(`[DefaultAdapter] Transformed ${transformedMessages.length} messages`)
 
     return {
       messages: transformedMessages,

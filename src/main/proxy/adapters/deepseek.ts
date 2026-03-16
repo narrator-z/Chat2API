@@ -1,13 +1,15 @@
 /**
  * DeepSeek Adapter
  * Implements DeepSeek web API protocol
+ * 
+ * NOTE: Tool prompt injection is handled by Forwarder.transformRequestForPromptToolUse()
+ * This adapter only handles message format conversion and API communication
  */
 
 import axios, { AxiosResponse } from 'axios'
 import { getDeepSeekHash } from '../../lib/challenge'
 import { Account, Provider } from '../store/types'
 import { storeManager } from '../store/store'
-import { toolsToSystemPrompt, TOOL_WRAP_HINT, hasToolPromptInjected } from '../utils/tools'
 
 const DEEPSEEK_API_BASE = 'https://chat.deepseek.com/api'
 
@@ -393,38 +395,10 @@ ${message.content || ''}
     const challengeAnswer = await this.calculateChallengeAnswer(challenge)
 
     // Clone messages to avoid modifying original request
+    // Note: Tool prompt injection is already handled by Forwarder.transformRequestForPromptToolUse()
     const messages = [...request.messages]
 
-    // Check if tool prompt has already been injected by client
-    const toolPromptExists = hasToolPromptInjected(messages)
-
-    // Append tool hint to the last user message if tools are provided and not already injected
-    if (request.tools && request.tools.length > 0 && !toolPromptExists) {
-      for (let i = messages.length - 1; i >= 0; i--) {
-        if (messages[i].role === 'user') {
-          const currentContent = messages[i].content
-          messages[i] = {
-            ...messages[i],
-            content: (currentContent || '') + TOOL_WRAP_HINT
-          }
-          break
-        }
-      }
-    }
-
     let prompt = this.messagesToPrompt(messages, isMultiTurn)
-
-    // Inject tools definition into prompt if tools are provided and not already injected
-    if (request.tools && request.tools.length > 0 && !toolPromptExists) {
-      // Use simple prompt for DeepSeek
-      const toolsPrompt = toolsToSystemPrompt(request.tools, true)
-      // Insert tools prompt at the beginning of the conversation
-      if (prompt.startsWith('<｜User｜>')) {
-        prompt = prompt.replace('<｜User｜>', `<｜User｜>${toolsPrompt}\n\n`)
-      } else {
-        prompt = `${toolsPrompt}\n\n${prompt}`
-      }
-    }
 
     // Use request parameters for mode control (OpenAI compatible)
     let searchEnabled = false

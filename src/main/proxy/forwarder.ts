@@ -18,17 +18,19 @@ import { QwenAdapter, QwenStreamHandler } from './adapters/qwen'
 import { QwenAiAdapter, QwenAiStreamHandler } from './adapters/qwen-ai'
 import { ZaiAdapter, ZaiStreamHandler } from './adapters/zai'
 import { MiniMaxAdapter, MiniMaxStreamHandler } from './adapters/minimax'
+import { PerplexityAdapter } from './adapters/perplexity'
+import { PerplexityStreamHandler } from './adapters/perplexity-stream'
 import {
   isNativeFunctionCallingModel,
   parseToolUse,
   formatToolResult,
   hasToolUse,
 } from './promptToolUse'
-import { toolsToSystemPrompt, TOOL_WRAP_HINT, hasToolPromptInjected } from './utils/tools'
 import { parseToolCallsFromText } from './utils/toolParser'
-import { parseToolCallsUnified } from './utils/unifiedToolParser'
-import { promptAdapterRegistry } from './adapters/prompt'
+import { parseToolCalls } from './utils/toolParser/index'
+import { promptInjectionService } from './services/promptInjectionService'
 import { sessionManager } from './sessionManager'
+import { cleanClientToolPrompts } from './utils/promptSignatures'
 
 function shouldDeleteSession(): boolean {
   return sessionManager.shouldDeleteAfterChat()
@@ -47,7 +49,7 @@ export class RequestForwarder {
   /**
    * Transform request for prompt-based tool calling
    * For models that don't support native function calling
-   * Uses the new PromptAdapterRegistry for enhanced client detection
+   * Delegates all logic to PromptInjectionService
    */
   private transformRequestForPromptToolUse(
     request: ChatCompletionRequest,
@@ -55,63 +57,25 @@ export class RequestForwarder {
   ): { messages: any[]; tools: undefined } | { messages: any[]; tools: ChatCompletionTool[] } {
     const { messages, tools, model } = request
 
-    if (!tools || tools.length === 0) {
-      return { messages, tools: undefined }
-    }
-
+    // 1. Quick check: native function calling model
     if (isNativeFunctionCallingModel(model)) {
       return { messages, tools }
     }
 
-    const config = storeManager.getConfig()
-    const injectionMode = config.toolPromptConfig?.mode || 'smart'
+    // 2. Check if we have tools to inject
+    const hasOpenAITools = tools && tools.length > 0
+    const hasMCPTools = this.hasMCPToolDefinitions(messages)
     
-    if (injectionMode === 'never') {
-      console.log('[Forwarder] Tool prompt injection disabled (mode=never), skipping transformation')
+    // 3. No tools at all - return as-is
+    if (!hasOpenAITools && !hasMCPTools) {
       return { messages, tools: undefined }
     }
 
-    if (promptAdapterRegistry.hasPromptInjected(messages)) {
-      console.log('[Forwarder] Tool prompt already injected by known client, skipping transformation')
-      return { messages, tools: undefined }
-    }
-
-    const result = promptAdapterRegistry.transformRequest(
-      messages,
-      tools,
-      model,
-      provider?.id
-    )
-
-    if (result.injected) {
-      console.log('[Forwarder] Tool prompt injected successfully using adapter registry')
-      return { messages: result.messages, tools: undefined }
-    }
-
-    console.log('[Forwarder] Using legacy tool prompt injection')
-    let systemPrompt = 'You are a helpful AI assistant.'
-    const otherMessages: any[] = []
-
-    for (const msg of messages) {
-      if (msg.role === 'system') {
-        systemPrompt = msg.content as string
-      } else {
-        otherMessages.push(msg)
-      }
-    }
-
-    const toolsPrompt = toolsToSystemPrompt(tools as any[])
-    const enhancedSystemPrompt = systemPrompt 
-      ? `${systemPrompt}\n\n${toolsPrompt}` 
-      : toolsPrompt
-
-    return {
-      messages: [
-        { role: 'system', content: enhancedSystemPrompt },
-        ...otherMessages,
-      ],
-      tools: undefined,
-    }
+    // 4. Delegate all injection logic to PromptInjectionService
+    // Pass empty array if no OpenAI tools, service will handle MCP tools
+    const result = promptInjectionService.process(messages, tools || [], model, provider?.id)
+    
+    return { messages: result.messages, tools: undefined }
   }
 
   /**
@@ -119,14 +83,185 @@ export class RequestForwarder {
    * Supports multiple formats: bracket, XML, Anthropic, JSON
    */
   private parseToolCallsFromContent(content: string): ToolCall[] | null {
-    const result = parseToolCallsUnified(content)
-    
+    const result = parseToolCalls(content)
+
     if (result.toolCalls.length > 0) {
       console.log(`[Forwarder] Parsed ${result.toolCalls.length} tool calls (format: ${result.format})`)
       return result.toolCalls
     }
-    
+
     return null
+  }
+
+  /**
+   * Check if messages contain MCP-style tool definitions
+   * MCP tools are defined in system message using <tools><tool> XML format
+   */
+  private hasMCPToolDefinitions(messages: any[]): boolean {
+    for (const msg of messages) {
+      if (msg.role === 'system' && typeof msg.content === 'string') {
+        // Check for MCP-style tool definitions
+        if (msg.content.includes('<tools>') && msg.content.includes('<tool>')) {
+          return true
+        }
+        // Also check for "Tool Use Available Tools" section (Cherry Studio format)
+        if (msg.content.includes('## Tool Use Available Tools')) {
+          return true
+        }
+      }
+    }
+    return false
+  }
+
+  /**
+   * Transform MCP tool protocol from one format to another
+   * Used when user wants to change the tool calling format
+   */
+  private transformMCPToolProtocol(messages: any[], targetFormat: 'bracket' | 'xml'): any[] {
+    console.log(`[Forwarder] Transforming MCP tool protocol to ${targetFormat} format`)
+    
+    return messages.map(msg => {
+      if (msg.role === 'system' && typeof msg.content === 'string') {
+        console.log(`[Forwarder] Processing system message, content length: ${msg.content.length}`)
+        
+        // Extract tool definitions from MCP format FIRST (before cleaning)
+        const tools = this.extractMCPTools(msg.content)
+        
+        console.log(`[Forwarder] Extracted ${tools.length} MCP tools from original content`)
+        
+        if (tools.length === 0) {
+          return msg
+        }
+        
+        // Clean existing tool prompt section
+        const cleanedMsg = cleanClientToolPrompts([msg])[0]
+        let content = msg.content
+        if (typeof cleanedMsg.content === 'string' && cleanedMsg.content !== msg.content) {
+          console.log(`[Forwarder] Cleaned content, new length: ${cleanedMsg.content.length}`)
+          content = cleanedMsg.content
+        } else {
+          console.log(`[Forwarder] No cleaning performed or content unchanged`)
+        }
+        
+        // Generate new tool prompt in target format
+        const toolPrompt = this.generateToolPrompt(tools, targetFormat)
+        console.log(`[Forwarder] Generated tool prompt, length: ${toolPrompt.length}`)
+        
+        // Inject new prompt
+        const newContent = content + '\n\n' + toolPrompt
+        console.log(`[Forwarder] New content length: ${newContent.length}`)
+        
+        return {
+          ...msg,
+          content: newContent
+        }
+      }
+      return msg
+    })
+  }
+
+  /**
+   * Extract tool definitions from MCP format
+   */
+  private extractMCPTools(content: string): ChatCompletionTool[] {
+    const tools: ChatCompletionTool[] = []
+    
+    console.log('[Forwarder] Extracting MCP tools from content')
+    
+    // Match <tool> blocks - more flexible regex
+    const toolRegex = /<tool>[\s\S]*?<name>([^<]+)<\/name>[\s\S]*?<description>([^<]*)<\/description>[\s\S]*?<arguments>([\s\S]*?)<\/arguments>[\s\S]*?<\/tool>/g
+    
+    let match
+    let matchCount = 0
+    while ((match = toolRegex.exec(content)) !== null) {
+      matchCount++
+      const name = match[1].trim()
+      const description = match[2].trim()
+      let argumentsStr = match[3].trim()
+      
+      console.log(`[Forwarder] Found tool #${matchCount}: ${name}`)
+      console.log(`[Forwarder] Description: ${description.substring(0, 50)}...`)
+      console.log(`[Forwarder] Arguments length: ${argumentsStr.length}`)
+      
+      // Parse JSON schema from arguments
+      let parameters = {}
+      try {
+        // Try to parse the arguments as JSON directly
+        const argsObj = JSON.parse(argumentsStr)
+        if (argsObj.jsonSchema) {
+          parameters = argsObj.jsonSchema
+          console.log(`[Forwarder] Parsed jsonSchema successfully`)
+        }
+      } catch (e) {
+        // Try alternative parsing
+        try {
+          const jsonSchemaMatch = argumentsStr.match(/"jsonSchema"\s*:\s*(\{[\s\S]*?\})\s*}\s*$/)
+          if (jsonSchemaMatch) {
+            parameters = JSON.parse(jsonSchemaMatch[1])
+            console.log(`[Forwarder] Parsed jsonSchema via regex`)
+          }
+        } catch (e2) {
+          console.log('[Forwarder] Failed to parse MCP tool arguments:', e)
+        }
+      }
+      
+      tools.push({
+        type: 'function',
+        function: {
+          name,
+          description,
+          parameters
+        }
+      })
+    }
+    
+    console.log(`[Forwarder] Total MCP tools extracted: ${tools.length}`)
+    return tools
+  }
+
+  /**
+   * Generate tool prompt in specified format
+   */
+  private generateToolPrompt(tools: ChatCompletionTool[], format: 'bracket' | 'xml'): string {
+    const toolDefinitions = tools.map(tool => {
+      const params = tool.function.parameters
+        ? JSON.stringify(tool.function.parameters)
+        : '{}'
+      return `Tool \`${tool.function.name}\`: ${tool.function.description || 'No description'}. Arguments JSON schema: ${params}`
+    }).join('\n')
+
+    if (format === 'xml') {
+      return `## Available Tools
+You can invoke the following developer tools. Call a tool only when it is required and follow the JSON schema exactly when providing arguments.
+
+${toolDefinitions}
+
+## Tool Call Protocol
+When you decide to call a tool, respond with:
+<tool_use>
+  <name>exact_tool_name</name>
+  <arguments>{"arg": "value"}</arguments>
+</tool_use>`
+    }
+
+    return `## Available Tools
+You can invoke the following developer tools. Call a tool only when it is required and follow the JSON schema exactly when providing arguments.
+
+CRITICAL: Tool names are CASE-SENSITIVE. You MUST use the exact tool name as defined below.
+
+${toolDefinitions}
+
+## Tool Call Protocol
+When you decide to call a tool, you MUST respond with NOTHING except a single [function_calls] block exactly like the template below:
+
+[function_calls]
+[call:exact_tool_name_from_list]{"argument": "value"}[/call]
+[/function_calls]
+
+CRITICAL RULES:
+1. EVERY tool call MUST start with [call:exact_tool_name] and end with [/call]
+2. The content between [call:...] and [/call] MUST be a raw JSON object on ONE LINE
+3. Do NOT output any other text before or after the [function_calls] block`
   }
 
   /**
@@ -158,14 +293,23 @@ export class RequestForwarder {
 
       // When starting a new session, only send the last user message
       // This prevents sending conversation history from the previous session
+      // BUT keep the system message (which contains tool definitions)
       let modifiedRequest = request
       if (sessionContext.isNew && request.messages && request.messages.length > 0) {
+        const systemMessage = request.messages.find(m => m.role === 'system')
         const lastUserMessage = request.messages[request.messages.length - 1]
+        const newMessages: any[] = []
+        
+        if (systemMessage) {
+          newMessages.push(systemMessage)
+        }
+        newMessages.push(lastUserMessage)
+        
         modifiedRequest = {
           ...request,
-          messages: [lastUserMessage]
+          messages: newMessages
         }
-        console.log('[Forwarder] New session detected, sending only last user message')
+        console.log('[Forwarder] New session detected, sending system message + last user message')
       }
 
       // Save user message to session (only for multi-turn mode and first attempt)
@@ -263,6 +407,11 @@ export class RequestForwarder {
     // Check if it is a MiniMax provider, use dedicated adapter
     if (MiniMaxAdapter.isMiniMaxProvider(provider)) {
       return this.forwardMiniMax(request, account, provider, actualModel, startTime, sessionContext)
+    }
+
+    // Check if it is a Perplexity provider, use dedicated adapter
+    if (PerplexityAdapter.isPerplexityProvider(provider)) {
+      return this.forwardPerplexity(request, account, provider, actualModel, startTime, sessionContext)
     }
 
     try {
@@ -1230,6 +1379,100 @@ export class RequestForwarder {
         success: false,
         error: 'No response or stream received',
         latency,
+      }
+    } catch (error) {
+      const latency = Date.now() - startTime
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        latency,
+      }
+    }
+  }
+
+  /**
+   * Perplexity Dedicated Forward
+   * Uses Electron's net API to bypass Cloudflare protection
+   */
+  private async forwardPerplexity(
+    request: ChatCompletionRequest,
+    account: Account,
+    provider: Provider,
+    actualModel: string,
+    startTime: number,
+    sessionContext: { sessionId: string; providerSessionId?: string; parentMessageId?: string; messages: any[]; isNew: boolean }
+  ): Promise<ForwardResult> {
+    console.log('[forwardPerplexity] actualModel:', actualModel)
+    try {
+      const transformed = this.transformRequestForPromptToolUse(request, provider)
+      
+      const adapter = new PerplexityAdapter(provider, account)
+      
+      const isMultiTurn = sessionManager.isMultiTurnEnabled() && sessionContext && !sessionContext.isNew
+      
+      const { stream, sessionId } = await adapter.chatCompletion({
+        model: actualModel,
+        messages: transformed.messages as any,
+        stream: request.stream,
+        temperature: request.temperature,
+        isMultiTurn,
+        sessionId: sessionContext?.providerSessionId,
+      })
+
+      const latency = Date.now() - startTime
+
+      if (request.stream === true) {
+        const deleteSessionCallback = shouldDeleteSession()
+          ? async () => {
+              try {
+                await adapter.deleteSession(sessionId)
+              } catch (error) {
+                console.error('[Perplexity] Failed to delete session:', error)
+              }
+            }
+          : undefined
+
+        const handler = new PerplexityStreamHandler(actualModel, sessionId, deleteSessionCallback, adapter)
+        const transformedStream = await handler.handleStream(stream)
+        
+        return {
+          success: true,
+          status: 200,
+          headers: {},
+          stream: transformedStream as any,
+          skipTransform: true,
+          latency,
+          providerSessionId: sessionId,
+        }
+      }
+
+      const handler = new PerplexityStreamHandler(actualModel, sessionId, undefined, adapter)
+      const result = await handler.handleNonStream(stream)
+      
+      // Parse tool calls from response content if tools were provided
+      if (request.tools && request.tools.length > 0 && !isNativeFunctionCallingModel(request.model)) {
+        const content = result?.choices?.[0]?.message?.content || ''
+        const toolCalls = this.parseToolCallsFromContent(content)
+        
+        if (toolCalls && toolCalls.length > 0) {
+          result.choices[0].message.tool_calls = toolCalls
+          result.choices[0].message.content = null
+          result.choices[0].finish_reason = 'tool_calls'
+        }
+      }
+      
+      // Delete session after non-stream response
+      if (shouldDeleteSession()) {
+        await adapter.deleteSession(sessionId)
+      }
+      
+      return {
+        success: true,
+        status: 200,
+        headers: {},
+        body: result,
+        latency,
+        providerSessionId: sessionId,
       }
     } catch (error) {
       const latency = Date.now() - startTime

@@ -145,6 +145,8 @@ export class ProviderChecker {
         return this.checkQwenToken(account.credentials.ticket)
       case 'qwen-ai':
         return this.checkQwenAiToken(account.credentials.token)
+      case 'perplexity':
+        return this.checkPerplexityToken(account.credentials.sessionToken || account.credentials.token)
       default:
         return this.checkGenericToken(builtinConfig, account)
     }
@@ -547,6 +549,23 @@ export class ProviderChecker {
           ? error.message
           : 'Connection failed',
       }
+    }
+  }
+
+  private static checkPerplexityToken(sessionToken: string): TokenCheckResult {
+    if (!sessionToken) {
+      return { valid: false, error: 'Session token is required' }
+    }
+
+    if (sessionToken.length < 100) {
+      return { valid: false, error: 'Session token appears to be invalid (too short)' }
+    }
+
+    return {
+      valid: true,
+      userInfo: {
+        name: 'Perplexity User',
+      },
     }
   }
 

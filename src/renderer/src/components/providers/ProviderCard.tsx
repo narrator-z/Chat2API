@@ -18,7 +18,8 @@ import {
   RefreshCw, 
   Users,
   Plus,
-  LogIn
+  LogIn,
+  Info
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { Provider, ProviderStatus } from '@/types/electron'
@@ -26,6 +27,7 @@ import deepseekIcon from '@/assets/providers/deepseek.svg'
 import glmIcon from '@/assets/providers/glm.svg'
 import kimiIcon from '@/assets/providers/kimi.svg'
 import minimaxIcon from '@/assets/providers/minimax.svg'
+import perplexityIcon from '@/assets/providers/perplexity.svg'
 import qwenIcon from '@/assets/providers/qwen.svg'
 import zaiIcon from '@/assets/providers/zai.svg'
 
@@ -34,6 +36,7 @@ const providerIcons: Record<string, string> = {
   glm: glmIcon,
   kimi: kimiIcon,
   minimax: minimaxIcon,
+  perplexity: perplexityIcon,
   qwen: qwenIcon,
   'qwen-ai': qwenIcon,
   zai: zaiIcon,
@@ -124,6 +127,12 @@ export function ProviderCard({
             <CardDescription className="text-xs mt-1">
               {getProviderDescription() || `${provider.supportedModels?.length || 0} ${t('providers.models').toLowerCase()}`}
             </CardDescription>
+            {provider.id === 'perplexity' && (
+              <p className="flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400 mt-1">
+                <Info className="h-3 w-3 flex-shrink-0" />
+                <span>{t('perplexity.freeUserNotice')}</span>
+              </p>
+            )}
           </div>
         </div>
         <div className="flex items-center gap-2">

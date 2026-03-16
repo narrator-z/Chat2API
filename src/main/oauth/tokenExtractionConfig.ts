@@ -126,6 +126,22 @@ export const TOKEN_EXTRACTION_CONFIGS: Record<ProviderType, TokenExtractionConfi
     successUrlPatterns: [/chat\.qwen\.ai/i, /qwen\.ai/i],
     windowTitle: 'Qwen AI Login',
   },
+  perplexity: {
+    loginUrl: 'https://www.perplexity.ai',
+    tokenSources: [
+      {
+        type: 'cookie',
+        key: '__Secure-next-auth.session-token',
+      },
+      {
+        type: 'cookie',
+        key: 'next-auth.session-token',
+      },
+    ],
+    targetDomains: ['.perplexity.ai', 'perplexity.ai'],
+    successUrlPatterns: [/perplexity\.ai/i],
+    windowTitle: 'Perplexity Login - Please click Sign In to login',
+  },
 }
 
 export function getTokenExtractionConfig(providerType: ProviderType): TokenExtractionConfig | null {

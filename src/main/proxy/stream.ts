@@ -5,7 +5,7 @@
 
 import { PassThrough, Transform } from 'stream'
 import { SSEEvent, ChatCompletionResponse, ChatCompletionChoice, ToolCall } from './types'
-import { parseToolCallsFromText } from './utils/toolParser'
+import { parseToolCalls } from './utils/toolParser/index'
 
 /**
  * SSE Parser
@@ -243,7 +243,7 @@ export class StreamHandler {
 
               if (isBufferingToolCall) {
                 // Try to parse tool calls from buffer
-                const { content: cleanContent, toolCalls } = parseToolCallsFromText(contentBuffer)
+                const { content: cleanContent, toolCalls } = parseToolCalls(contentBuffer)
 
                 if (toolCalls.length > 0) {
                   // We found complete tool calls!
@@ -319,7 +319,7 @@ export class StreamHandler {
       flush(callback) {
         if (contentBuffer) {
           // Final check for tool calls in buffer
-          const { content: cleanContent, toolCalls } = parseToolCallsFromText(contentBuffer)
+          const { content: cleanContent, toolCalls } = parseToolCalls(contentBuffer)
 
           if (toolCalls.length > 0) {
             for (const tc of toolCalls) {
@@ -491,7 +491,7 @@ export class StreamHandler {
 
       stream.on('end', () => {
         // Parse tool calls from accumulated content
-        const { content: cleanContent, toolCalls: parsedToolCalls } = parseToolCallsFromText(content)
+        const { content: cleanContent, toolCalls: parsedToolCalls } = parseToolCalls(content)
 
         // Merge parsed tool calls with any native tool calls
         const finalToolCalls = [...toolCalls]

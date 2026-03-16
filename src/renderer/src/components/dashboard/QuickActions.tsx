@@ -3,12 +3,13 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
-import { Play, Square, Plus, FileText, Zap, Loader2 } from 'lucide-react'
+import { Play, Square, Plus, FileText, Zap, Loader2, Wrench } from 'lucide-react'
 
 export interface QuickActionsProps {
   proxyRunning: boolean
   onToggleProxy: () => void
   onAddAccount: () => void
+  onToolCalling: () => void
   onViewLogs: () => void
   isLoading?: boolean
   className?: string
@@ -18,6 +19,7 @@ export function QuickActions({
   proxyRunning,
   onToggleProxy,
   onAddAccount,
+  onToolCalling,
   onViewLogs,
   isLoading,
   className,
@@ -72,6 +74,15 @@ export function QuickActions({
         >
           <Plus className="mr-2 h-4 w-4" />
           {t('quickActions.addAccount')}
+        </Button>
+
+        <Button
+          className="w-full justify-start"
+          variant="outline"
+          onClick={onToolCalling}
+        >
+          <Wrench className="mr-2 h-4 w-4" />
+          {t('quickActions.toolCalling')}
         </Button>
 
         <Button

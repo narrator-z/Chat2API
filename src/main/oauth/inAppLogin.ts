@@ -136,6 +136,46 @@ export class InAppLoginManager extends EventEmitter {
   private setupTokenInterception(): void {
     if (!this.loginSession || !this.config) return
 
+    // Intercept response headers to capture Set-Cookie headers
+    // This is needed for HttpOnly + Secure cookies that may not be accessible via cookies.get()
+    this.loginSession.webRequest.onHeadersReceived((details, callback) => {
+      if (this.isCompleted) {
+        callback({})
+        return
+      }
+
+      const setCookieHeaders = details.responseHeaders?.['set-cookie'] || details.responseHeaders?.['Set-Cookie']
+      if (setCookieHeaders && Array.isArray(setCookieHeaders)) {
+        for (const cookieHeader of setCookieHeaders) {
+          console.log('[InAppLogin] Set-Cookie header:', cookieHeader.substring(0, 100))
+          
+          // Parse the cookie header
+          const cookieParts = cookieHeader.split(';')
+          const nameValue = cookieParts[0]?.trim()
+          if (nameValue) {
+            const equalIndex = nameValue.indexOf('=')
+            if (equalIndex > 0) {
+              const name = nameValue.substring(0, equalIndex)
+              const value = nameValue.substring(equalIndex + 1)
+              
+              // Check if this is a token we're looking for
+              for (const source of this.config!.tokenSources) {
+                if (source.type === 'cookie' && name === source.key) {
+                  console.log('[InAppLogin] Found target cookie in Set-Cookie header:', name)
+                  if (this.isValidToken(value)) {
+                    console.log('[InAppLogin] Cookie token is valid from Set-Cookie header')
+                    this.emit('tokenFound', { key: source.key, value: value })
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+
+      callback({})
+    })
+
     this.loginSession.webRequest.onBeforeSendHeaders((details, callback) => {
       if (this.isCompleted) {
         callback({ requestHeaders: details.requestHeaders })
@@ -234,10 +274,25 @@ export class InAppLoginManager extends EventEmitter {
       return false
     }
     
-    if (value.startsWith('eyJ') && value.split('.').length === 3) {
-      try {
-        const parts = value.split('.')
-        if (parts.length === 3) {
+    // Check for JWT format (3 parts) or JWE format (5 parts)
+    if (value.startsWith('eyJ')) {
+      const parts = value.split('.')
+      
+      // JWE format (5 parts) - used by Perplexity and some other providers
+      if (parts.length === 5) {
+        console.log('[InAppLogin] Token appears to be JWE format (5 parts)')
+        // JWE tokens are encrypted, we can't decode them, but they're valid if properly formatted
+        if (value.length >= 100) {
+          console.log('[InAppLogin] Token accepted as valid JWE')
+          return true
+        }
+        console.log('[InAppLogin] JWE token rejected: too short')
+        return false
+      }
+      
+      // JWT format (3 parts)
+      if (parts.length === 3) {
+        try {
           const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString())
           console.log('[InAppLogin] JWT payload:', payload)
           
@@ -251,10 +306,10 @@ export class InAppLoginManager extends EventEmitter {
             console.log('[InAppLogin] Token accepted as valid JWT')
             return true
           }
+        } catch {
+          console.log('[InAppLogin] Token rejected: invalid JWT')
+          return false
         }
-      } catch {
-        console.log('[InAppLogin] Token rejected: invalid JWT')
-        return false
       }
     }
     
@@ -356,16 +411,49 @@ export class InAppLoginManager extends EventEmitter {
       for (const source of cookieSources) {
         if (!this.loginSession) continue
 
-        const cookies = await this.loginSession.cookies.get({})
-        console.log('[InAppLogin] All cookies:', cookies.map(c => c.name))
+        // Get all cookies without filter
+        const allCookies = await this.loginSession.cookies.get({})
+        console.log('[InAppLogin] All cookies count:', allCookies.length)
+        console.log('[InAppLogin] All cookies:', allCookies.map(c => `${c.name}=${c.value?.substring(0, 20)}...`))
+        
+        // Also try getting cookies with domain filter for the target domain
+        // This is needed for HttpOnly + Secure cookies like __Secure-next-auth.session-token
+        const targetDomains = this.config?.targetDomains || []
+        let cookiesToSearch = allCookies
+        
+        // Try to get cookies from target domains
+        for (const domain of targetDomains) {
+          try {
+            const domainCookies = await this.loginSession.cookies.get({ domain })
+            console.log(`[InAppLogin] Domain cookies for ${domain}:`, domainCookies.map(c => c.name))
+            // Merge domain cookies into the search list
+            for (const dc of domainCookies) {
+              if (!cookiesToSearch.find(c => c.name === dc.name)) {
+                cookiesToSearch.push(dc)
+              }
+            }
+          } catch (e) {
+            console.log(`[InAppLogin] Error getting cookies for domain ${domain}:`, e)
+          }
+        }
+        
+        console.log('[InAppLogin] Combined cookies to search:', cookiesToSearch.map(c => c.name))
 
-        const cookie = cookies.find(c => c.name === source.key)
+        // Find the cookie by name
+        const cookie = cookiesToSearch.find(c => c.name === source.key)
         if (cookie) {
           console.log('[InAppLogin] Found cookie:', source.key, cookie.value ? cookie.value.substring(0, 50) + '...' : 'null')
 
           if (cookie.value && this.isValidToken(cookie.value)) {
             console.log('[InAppLogin] Token found and valid from cookie:', source.key)
-            this.emit('tokenFound', { key: source.key, value: cookie.value })
+            // Build all cookies object for Cloudflare-protected requests
+            const allCookiesObj: Record<string, string> = {}
+            for (const c of cookiesToSearch) {
+              if (c.value) {
+                allCookiesObj[c.name] = c.value
+              }
+            }
+            this.emit('tokenFound', { key: source.key, value: cookie.value, allCookies: allCookiesObj })
           } else {
             console.log('[InAppLogin] Cookie token is invalid:', source.key, cookie.value ? cookie.value.substring(0, 50) : 'null')
           }

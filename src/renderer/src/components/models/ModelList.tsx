@@ -22,13 +22,14 @@ import {
 import { useProvidersStore } from '@/stores/providersStore'
 import { useProxyStore } from '@/stores/proxyStore'
 import { useToast } from '@/hooks/use-toast'
-import { Search, Copy, CheckCircle2, XCircle, Cpu, Check, Square, Database } from 'lucide-react'
+import { Search, Copy, CheckCircle2, XCircle, Cpu, Check, Square, Database, ChevronLeft, ChevronRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { Account } from '@/types/electron'
 import deepseekIcon from '@/assets/providers/deepseek.svg'
 import glmIcon from '@/assets/providers/glm.svg'
 import kimiIcon from '@/assets/providers/kimi.svg'
 import minimaxIcon from '@/assets/providers/minimax.svg'
+import perplexityIcon from '@/assets/providers/perplexity.svg'
 import qwenIcon from '@/assets/providers/qwen.svg'
 import zaiIcon from '@/assets/providers/zai.svg'
 import modelMappingIcon from '@/assets/providers/model-mapping.svg'
@@ -38,6 +39,7 @@ const providerIcons: Record<string, string> = {
   glm: glmIcon,
   kimi: kimiIcon,
   minimax: minimaxIcon,
+  perplexity: perplexityIcon,
   qwen: qwenIcon,
   'qwen-ai': qwenIcon,
   zai: zaiIcon,
@@ -483,7 +485,7 @@ export function ModelList() {
                   onClick={() => handlePageChange(currentPage - 1)}
                   disabled={currentPage === 1}
                 >
-                  <Square className="h-4 w-4" />
+                  <ChevronLeft className="h-4 w-4" />
                 </Button>
                 <span className="text-sm">
                   {t('models.pageInfo', { 
@@ -497,7 +499,7 @@ export function ModelList() {
                   onClick={() => handlePageChange(currentPage + 1)}
                   disabled={currentPage === totalPages}
                 >
-                  <Square className="h-4 w-4" />
+                  <ChevronRight className="h-4 w-4" />
                 </Button>
               </div>
             )}

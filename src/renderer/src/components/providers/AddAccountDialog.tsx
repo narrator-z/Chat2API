@@ -41,6 +41,7 @@ function mapOAuthCredentials(providerId: string | undefined, credentials: Record
     'qwen': 'tongyi_sso_ticket',
     'qwen-ai': 'tongyi_sso_ticket',
     'zai': 'tongyi_sso_ticket',
+    'perplexity': '__Secure-next-auth.session-token',
   }
 
   const providerFieldNames: Record<string, string> = {
@@ -49,6 +50,7 @@ function mapOAuthCredentials(providerId: string | undefined, credentials: Record
     'qwen': 'ticket',
     'qwen-ai': 'ticket',
     'zai': 'ticket',
+    'perplexity': 'sessionToken',
   }
 
   const oauthKey = credentialKeyMap[providerId]
@@ -69,6 +71,14 @@ function mapOAuthCredentials(providerId: string | undefined, credentials: Record
       }
       return { [fieldName]: tokenValue }
     }
+  }
+
+  // For Perplexity, if we have the secure token, map it
+  if (providerId === 'perplexity' && credentials['__Secure-next-auth.session-token']) {
+    return { sessionToken: credentials['__Secure-next-auth.session-token'] }
+  }
+  if (providerId === 'perplexity' && credentials['next-auth.session-token']) {
+    return { sessionToken: credentials['next-auth.session-token'] }
   }
 
   return credentials
@@ -130,7 +140,7 @@ export function AddAccountDialog({
   const isEditing = !!editingAccount
   const builtinProvider = provider as BuiltinProviderConfig | null
   const credentialFields: CredentialField[] = builtinProvider?.credentialFields || getDefaultCredentialFields(provider?.authType, t)
-  const supportsOAuth = provider && ['deepseek', 'glm', 'kimi', 'minimax', 'qwen', 'qwen-ai', 'zai'].includes(provider.id)
+  const supportsOAuth = provider && ['deepseek', 'glm', 'kimi', 'minimax', 'qwen', 'qwen-ai', 'zai', 'perplexity'].includes(provider.id)
 
   useEffect(() => {
     if (open) {
@@ -536,6 +546,13 @@ function CredentialFieldsForm({ fields, credentials, onChange, t, providerId }: 
           label: t('zai.token'),
           placeholder: t('zai.tokenPlaceholder'),
           helpText: t('zai.tokenHelp'),
+        },
+      },
+      perplexity: {
+        sessionToken: {
+          label: t('perplexity.sessionToken'),
+          placeholder: t('perplexity.sessionTokenPlaceholder'),
+          helpText: t('perplexity.sessionTokenHelp'),
         },
       },
     }

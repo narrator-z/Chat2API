@@ -1,106 +1,30 @@
 /**
  * Prompt Signature Detection Module
  * Detects if tool prompts have been injected by various AI clients
+ * 
+ * This module now imports from the unified signatures module
+ * to eliminate duplication and ensure consistency
  */
 
 import { ChatMessage } from '../types'
+import {
+  TOOL_PROMPT_SIGNATURES,
+  TOOL_PROMPT_SECTION_MARKERS,
+  ClientType,
+  DetectionResult,
+  detectClientFromSignatures,
+  hasGeneralToolPromptSignature,
+} from '../constants/signatures'
 
-/**
- * Client types that may inject tool prompts
- */
-export type ClientType =
-  | 'cline'
-  | 'kilocode'
-  | 'rooCode'
-  | 'vscodeCopilot'
-  | 'cherryStudio'
-  | 'anthropic'
-  | 'openai'
-  | 'unknown'
+export type { ClientType, DetectionResult } from '../constants/signatures'
 
-/**
- * Signature patterns for different clients
- * Each client has unique patterns in their injected prompts
- */
-export const CLIENT_PROMPT_SIGNATURES: Record<ClientType, string[]> = {
-  cline: [
-    'TOOL USE',
-    'When using tools, follow this format',
-    'function_calls block',
-    '## Tool Use',
-    'When invoking a tool',
-    'tool_use_format',
-    '## Available Tools',
-    'Tool Call Protocol',
-    '[function_calls]',
-    'TOOL_WRAP_HINT',
-  ],
-  kilocode: [
-    'You are Kilo',
-    '## Tools',
-    'Tool definitions:',
-    'You are an expert software engineer',
-    '## Tool Use',
-    'When using tools',
-  ],
-  rooCode: [
-    '## Tool Use Guidelines',
-    'TOOL USE',
-    'You have access to tools',
-    '## Tool Use',
-    'When invoking a tool',
-    'tool_use_format',
-    '## Capabilities',
-    '## Rules',
-    '## Objective',
-  ],
-  vscodeCopilot: [
-    'You are an AI programming assistant',
-    'Copilot',
-    'tool_use_format',
-    'You have access to tools',
-    'When using tools',
-    '## Tools',
-    'VS Code',
-  ],
-  cherryStudio: [
-    '## Available Tools',
-    'Tool Call Protocol',
-    '[function_calls]',
-    '<tool_use>',
-    'TOOL_WRAP_HINT',
-    'You can invoke the following developer tools',
-    'Tool Call Formatting',
-  ],
-  anthropic: [
-    'In this environment you have access to tools',
-    '<antml:function_calls>',
-    'antml:function_calls',
-    'In this environment',
-    'you have access to a set of tools',
-  ],
-  openai: [
-    'You are a helpful assistant',
-    'function_call',
-    'tool_calls',
-    'You have access to functions',
-  ],
-  unknown: [],
+export {
+  TOOL_PROMPT_SIGNATURES,
+  TOOL_PROMPT_SECTION_MARKERS,
+  detectClientFromSignatures,
+  hasGeneralToolPromptSignature,
 }
 
-/**
- * Detection result with confidence level
- */
-export interface DetectionResult {
-  clientType: ClientType
-  confidence: number
-  matchedSignatures: string[]
-}
-
-/**
- * Detect which client type has injected the prompt
- * Returns the most likely client with confidence score
- */
 export function detectClientPromptType(messages: ChatMessage[]): DetectionResult {
   const allContent = extractAllContent(messages)
   
@@ -108,49 +32,19 @@ export function detectClientPromptType(messages: ChatMessage[]): DetectionResult
     return { clientType: 'unknown', confidence: 0, matchedSignatures: [] }
   }
 
-  const results: DetectionResult[] = []
-
-  for (const [clientType, signatures] of Object.entries(CLIENT_PROMPT_SIGNATURES)) {
-    if (clientType === 'unknown') continue
-
-    const matchedSignatures: string[] = []
-    
-    for (const sig of signatures) {
-      if (allContent.includes(sig)) {
-        matchedSignatures.push(sig)
-      }
-    }
-
-    if (matchedSignatures.length > 0) {
-      const confidence = matchedSignatures.length / signatures.length
-      results.push({
-        clientType: clientType as ClientType,
-        confidence,
-        matchedSignatures,
-      })
-    }
-  }
-
-  if (results.length === 0) {
-    return { clientType: 'unknown', confidence: 0, matchedSignatures: [] }
-  }
-
-  results.sort((a, b) => b.confidence - a.confidence)
-
-  return results[0]
+  return detectClientFromSignatures(allContent)
 }
 
-/**
- * Check if any tool prompt has been injected by any known client
- */
 export function hasAnyToolPromptInjected(messages: ChatMessage[]): boolean {
-  const result = detectClientPromptType(messages)
-  return result.clientType !== 'unknown' && result.confidence > 0
+  const allContent = extractAllContent(messages)
+  
+  if (!allContent) {
+    return false
+  }
+
+  return hasGeneralToolPromptSignature(allContent)
 }
 
-/**
- * Check if a specific client has injected the prompt
- */
 export function hasClientPromptInjected(
   messages: ChatMessage[],
   clientType: ClientType
@@ -161,20 +55,10 @@ export function hasClientPromptInjected(
     return false
   }
 
-  const signatures = CLIENT_PROMPT_SIGNATURES[clientType]
-  
-  for (const sig of signatures) {
-    if (allContent.includes(sig)) {
-      return true
-    }
-  }
-
-  return false
+  const result = detectClientFromSignatures(allContent)
+  return result.clientType === clientType && result.confidence > 0
 }
 
-/**
- * Get all matched signatures from messages
- */
 export function getMatchedSignatures(messages: ChatMessage[]): Map<ClientType, string[]> {
   const allContent = extractAllContent(messages)
   const result = new Map<ClientType, string[]>()
@@ -183,7 +67,7 @@ export function getMatchedSignatures(messages: ChatMessage[]): Map<ClientType, s
     return result
   }
 
-  for (const [clientType, signatures] of Object.entries(CLIENT_PROMPT_SIGNATURES)) {
+  for (const [clientType, signatures] of Object.entries(TOOL_PROMPT_SIGNATURES.clients)) {
     if (clientType === 'unknown') continue
 
     const matched: string[] = []
@@ -202,9 +86,6 @@ export function getMatchedSignatures(messages: ChatMessage[]): Map<ClientType, s
   return result
 }
 
-/**
- * Extract all text content from messages
- */
 function extractAllContent(messages: ChatMessage[]): string {
   const parts: string[] = []
 
@@ -227,22 +108,40 @@ function extractAllContent(messages: ChatMessage[]): string {
   return parts.join('\n')
 }
 
-/**
- * Legacy function for backward compatibility
- * Uses the same signature patterns as the original tools.ts
- */
-export const TOOL_PROMPT_SIGNATURES = [
-  '## Available Tools',
-  '## Tool Call Protocol',
-  '[function_calls]',
-  'TOOL_WRAP_HINT',
-  'You can invoke the following developer tools',
-  'Tool Call Formatting',
-]
+export function removeToolPromptSection(content: string): string {
+  let cleanedContent = content
+  
+  for (const [clientName, markers] of Object.entries(TOOL_PROMPT_SECTION_MARKERS)) {
+    const startIndex = cleanedContent.indexOf(markers.start)
+    const endIndex = cleanedContent.indexOf(markers.end)
+    
+    if (startIndex !== -1) {
+      if (endIndex !== -1 && endIndex > startIndex) {
+        cleanedContent = cleanedContent.slice(0, startIndex) + cleanedContent.slice(endIndex)
+        console.log(`[PromptSignatures] Removed ${clientName} tool prompt section`)
+      } else {
+        cleanedContent = cleanedContent.slice(0, startIndex)
+        console.log(`[PromptSignatures] Removed ${clientName} tool prompt section (no end marker)`)
+      }
+    }
+  }
+  
+  return cleanedContent.trim()
+}
 
-/**
- * Legacy function for backward compatibility
- */
+export function cleanClientToolPrompts(messages: ChatMessage[]): ChatMessage[] {
+  return messages.map(msg => {
+    if (msg.role === 'system' && typeof msg.content === 'string') {
+      const cleanedContent = removeToolPromptSection(msg.content)
+      if (cleanedContent !== msg.content) {
+        console.log('[PromptSignatures] Cleaned system message, removed tool prompt section')
+        return { ...msg, content: cleanedContent }
+      }
+    }
+    return msg
+  })
+}
+
 export function hasToolPromptInjected(messages: ChatMessage[]): boolean {
   return hasAnyToolPromptInjected(messages)
 }

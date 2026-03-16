@@ -198,4 +198,14 @@ export const MANUAL_TOKEN_CONFIGS: Record<ProviderType, ManualTokenConfig[]> = {
       helpUrl: 'https://chat.qwen.ai',
     },
   ],
+  perplexity: [
+    {
+      providerType: 'perplexity',
+      tokenType: 'cookie',
+      label: 'Cookies',
+      placeholder: 'Paste Perplexity cookies or import HAR file',
+      description: 'Get cookies from perplexity.ai browser DevTools or import HAR file',
+      helpUrl: 'https://www.perplexity.ai',
+    },
+  ],
 }

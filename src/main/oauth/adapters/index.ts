@@ -8,6 +8,7 @@ export { DeepSeekAdapter } from './deepseek'
 export { GLMAdapter } from './glm'
 export { KimiAdapter } from './kimi'
 export { MiniMaxAdapter } from './minimax'
+export { PerplexityAdapter } from './perplexity'
 export { QwenAdapter } from './qwen'
 export { QwenAiAdapter } from './qwen-ai'
 export { ZaiAdapter } from './zai'
@@ -16,6 +17,7 @@ import { DeepSeekAdapter } from './deepseek'
 import { GLMAdapter } from './glm'
 import { KimiAdapter } from './kimi'
 import { MiniMaxAdapter } from './minimax'
+import { PerplexityAdapter } from './perplexity'
 import { QwenAdapter } from './qwen'
 import { QwenAiAdapter } from './qwen-ai'
 import { ZaiAdapter } from './zai'
@@ -37,6 +39,8 @@ export function createAdapter(
       return new KimiAdapter(config)
     case 'minimax':
       return new MiniMaxAdapter(config)
+    case 'perplexity':
+      return new PerplexityAdapter(config)
     case 'qwen':
       return new QwenAdapter(config)
     case 'qwen-ai':
@@ -61,6 +65,8 @@ export function getSupportedAuthMethods(providerType: ProviderType): string[] {
       return ['manual']
     case 'minimax':
       return ['manual']
+    case 'perplexity':
+      return ['manual', 'cookie']
     case 'qwen':
       return ['manual', 'cookie']
     case 'qwen-ai':

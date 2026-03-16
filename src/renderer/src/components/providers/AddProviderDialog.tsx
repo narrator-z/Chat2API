@@ -14,13 +14,14 @@ import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Check, Plus, ArrowRight, Loader2, ExternalLink, AlertCircle, CheckCircle2, ArrowLeft } from 'lucide-react'
+import { Check, Plus, ArrowRight, Loader2, ExternalLink, AlertCircle, CheckCircle2, ArrowLeft, Info } from 'lucide-react'
 import type { BuiltinProviderConfig, ProviderVendor } from '@/types/electron'
 import { cn } from '@/lib/utils'
 import deepseekIcon from '@/assets/providers/deepseek.svg'
 import glmIcon from '@/assets/providers/glm.svg'
 import kimiIcon from '@/assets/providers/kimi.svg'
 import minimaxIcon from '@/assets/providers/minimax.svg'
+import perplexityIcon from '@/assets/providers/perplexity.svg'
 import qwenIcon from '@/assets/providers/qwen.svg'
 import zaiIcon from '@/assets/providers/zai.svg'
 
@@ -47,6 +48,7 @@ const providerIcons: Record<string, string> = {
   glm: glmIcon,
   kimi: kimiIcon,
   minimax: minimaxIcon,
+  perplexity: perplexityIcon,
   qwen: qwenIcon,
   'qwen-ai': qwenIcon,
   zai: zaiIcon,
@@ -61,6 +63,7 @@ function mapOAuthCredentials(providerId: string | undefined, credentials: Record
     'qwen': 'tongyi_sso_ticket',
     'qwen-ai': 'tongyi_sso_ticket',
     'zai': 'tongyi_sso_ticket',
+    'perplexity': '__Secure-next-auth.session-token',
   }
 
   const providerFieldNames: Record<string, string> = {
@@ -69,6 +72,7 @@ function mapOAuthCredentials(providerId: string | undefined, credentials: Record
     'qwen': 'ticket',
     'qwen-ai': 'ticket',
     'zai': 'ticket',
+    'perplexity': 'sessionToken',
   }
 
   const oauthKey = credentialKeyMap[providerId]
@@ -88,6 +92,14 @@ function mapOAuthCredentials(providerId: string | undefined, credentials: Record
       }
       return { [fieldName]: tokenValue }
     }
+  }
+
+  // For Perplexity, if we have the secure token, map it
+  if (providerId === 'perplexity' && credentials['__Secure-next-auth.session-token']) {
+    return { sessionToken: credentials['__Secure-next-auth.session-token'] }
+  }
+  if (providerId === 'perplexity' && credentials['next-auth.session-token']) {
+    return { sessionToken: credentials['next-auth.session-token'] }
   }
 
   return credentials
@@ -286,6 +298,43 @@ export function AddProviderDialog({
         },
       ],
     },
+    {
+      id: 'perplexity',
+      name: t('perplexity.name'),
+      type: 'builtin',
+      authType: 'cookie',
+      apiEndpoint: 'https://www.perplexity.ai',
+      enabled: true,
+      description: t('perplexity.description'),
+      supportedModels: [
+        'Auto',
+        'Turbo',
+        'PPLX-Pro',
+        'GPT-5',
+        'Gemini-2.5-Pro',
+        'Claude-Sonnet-4',
+        'Claude-Opus-4',
+        'Nemotron',
+      ],
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': '*/*',
+        'Origin': 'https://www.perplexity.ai',
+        'Referer': 'https://www.perplexity.ai/',
+      },
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+      credentialFields: [
+        {
+          name: 'sessionToken',
+          label: t('perplexity.sessionToken'),
+          type: 'password',
+          required: true,
+          placeholder: t('perplexity.sessionTokenPlaceholder'),
+          helpText: t('perplexity.sessionTokenHelp'),
+        },
+      ],
+    },
   ]
 
   const providers = builtinProviders.length > 0 ? builtinProviders : DEFAULT_BUILTIN_PROVIDERS
@@ -307,7 +356,7 @@ export function AddProviderDialog({
     ? providers.find((p) => p.id === selectedProvider) 
     : null
 
-  const supportsOAuth = selectedProviderData && ['deepseek', 'glm', 'kimi', 'minimax', 'qwen', 'qwen-ai', 'zai'].includes(selectedProviderData.id)
+  const supportsOAuth = selectedProviderData && ['deepseek', 'glm', 'kimi', 'minimax', 'qwen', 'qwen-ai', 'zai', 'perplexity'].includes(selectedProviderData.id)
 
   const toggleModelExpansion = (providerId: string) => {
     setExpandedModels(prev => {
@@ -537,6 +586,13 @@ export function AddProviderDialog({
                   helpText: t('zai.tokenHelp'),
                 },
               },
+              perplexity: {
+                sessionToken: {
+                  label: t('perplexity.sessionToken'),
+                  placeholder: t('perplexity.sessionTokenPlaceholder'),
+                  helpText: t('perplexity.sessionTokenHelp'),
+                },
+              },
             }
 
             const providerTranslations = translations[selectedProviderData.id]
@@ -608,15 +664,15 @@ export function AddProviderDialog({
                 <div
                   key={provider.id}
                   className={cn(
-                    'flex items-center justify-between p-3 rounded-lg border cursor-pointer transition-colors',
+                    'flex items-start justify-between p-3 rounded-lg border cursor-pointer transition-colors',
                     selectedProvider === provider.id
                       ? 'border-primary bg-primary/5'
                       : 'hover:bg-muted/50'
                   )}
                   onClick={() => setSelectedProvider(provider.id)}
                 >
-                  <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center overflow-hidden">
+                  <div className="flex items-start gap-3 flex-1 min-w-0">
+                    <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center overflow-hidden flex-shrink-0">
                       {providerIcons[provider.id] ? (
                         <img 
                           src={providerIcons[provider.id]} 
@@ -627,7 +683,7 @@ export function AddProviderDialog({
                         <span className="text-xl">🔌</span>
                       )}
                     </div>
-                    <div>
+                    <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
                         <span className="font-medium">{getProviderName(provider)}</span>
                         <Badge variant="outline" className="text-xs">
@@ -637,6 +693,12 @@ export function AddProviderDialog({
                       <p className="text-xs text-muted-foreground mt-0.5">
                         {getProviderDescription(provider)}
                       </p>
+                      {provider.id === 'perplexity' && (
+                        <p className="flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400 mt-1">
+                          <Info className="h-3 w-3 flex-shrink-0" />
+                          <span>{t('perplexity.freeUserNotice')}</span>
+                        </p>
+                      )}
                       <div className="flex items-center gap-1 mt-1 flex-wrap">
                         {expandedModels.has(provider.id) ? (
                           provider.supportedModels?.map((model) => (
@@ -669,7 +731,7 @@ export function AddProviderDialog({
                     </div>
                   </div>
                   {selectedProvider === provider.id && (
-                    <Check className="h-5 w-5 text-primary" />
+                    <Check className="h-5 w-5 text-primary flex-shrink-0 ml-2" />
                   )}
                 </div>
               ))}

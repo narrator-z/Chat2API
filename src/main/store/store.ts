@@ -600,6 +600,22 @@ class StoreManager {
       ...currentConfig,
       ...updates,
     }
+    
+    // Deep merge for nested objects
+    if (updates.toolPromptConfig && currentConfig.toolPromptConfig) {
+      newConfig.toolPromptConfig = {
+        ...currentConfig.toolPromptConfig,
+        ...updates.toolPromptConfig,
+      }
+    }
+    
+    if (updates.sessionConfig && currentConfig.sessionConfig) {
+      newConfig.sessionConfig = {
+        ...currentConfig.sessionConfig,
+        ...updates.sessionConfig,
+      }
+    }
+    
     this.store!.set('config', newConfig)
     return newConfig
   }

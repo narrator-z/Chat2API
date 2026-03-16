@@ -209,7 +209,25 @@ export const useProxyStore = create<ProxyState>((set, get) => ({
     try {
       set({ isLoading: true, error: null })
       const currentConfig = get().appConfig
-      const newConfig = { ...currentConfig, ...config } as AppConfig
+      
+      // Deep merge for nested objects like toolPromptConfig and sessionConfig
+      let newConfig = { ...currentConfig, ...config } as AppConfig
+      
+      // Handle toolPromptConfig deep merge
+      if (config.toolPromptConfig && currentConfig?.toolPromptConfig) {
+        newConfig.toolPromptConfig = {
+          ...currentConfig.toolPromptConfig,
+          ...config.toolPromptConfig,
+        }
+      }
+      
+      // Handle sessionConfig deep merge
+      if (config.sessionConfig && currentConfig?.sessionConfig) {
+        newConfig.sessionConfig = {
+          ...currentConfig.sessionConfig,
+          ...config.sessionConfig,
+        }
+      }
       
       await window.electronAPI.store.set('config', newConfig)
       set({ appConfig: newConfig })

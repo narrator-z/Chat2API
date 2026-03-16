@@ -84,6 +84,10 @@ export function Dashboard() {
     navigate('/providers')
   }, [navigate])
 
+  const handleToolCalling = useCallback(() => {
+    navigate('/models?tab=prompts')
+  }, [navigate])
+
   const handleViewLogs = useCallback(() => {
     navigate('/logs')
   }, [navigate])
@@ -191,6 +195,7 @@ export function Dashboard() {
             proxyRunning={proxyStatus?.isRunning ?? proxyEnabled}
             onToggleProxy={handleToggleProxy}
             onAddAccount={handleAddAccount}
+            onToolCalling={handleToolCalling}
             onViewLogs={handleViewLogs}
             isLoading={isLoading}
           />

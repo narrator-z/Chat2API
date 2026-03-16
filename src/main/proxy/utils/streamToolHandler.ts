@@ -1,13 +1,33 @@
 /**
  * Stream Tool Handler Module - Handle tool calls in streaming responses
  * Used by all provider-specific StreamHandlers
- * 
+ *
  * Strategy: Buffer content when [function_calls] marker is detected,
  * parse tool calls and emit them as tool_calls delta instead of text content
+ *
+ * @deprecated This module is being phased out. Use the new unified toolParser module instead.
+ * Import from './toolParser/index.ts' for the latest unified parsing functionality.
  */
 
 import { parseToolCallsFromText } from './toolParser'
 
+// Import types and functions from the new unified module
+import {
+  StreamState,
+  createStreamState,
+  parseToolCallsStream as unifiedParseToolCallsStream,
+  flushToolCallBuffer as unifiedFlushToolCallBuffer,
+  shouldBlockOutput as unifiedShouldBlockOutput,
+  createBaseChunk as unifiedCreateBaseChunk
+} from './toolParser/index'
+
+// Re-export StreamState type for backward compatibility
+export type { StreamState } from './toolParser/index'
+
+/**
+ * Tool call state for backward compatibility
+ * @deprecated Use StreamState from './toolParser/index.ts' instead
+ */
 export interface ToolCallState {
   contentBuffer: string
   isBufferingToolCall: boolean
@@ -15,18 +35,18 @@ export interface ToolCallState {
   hasEmittedToolCall: boolean
 }
 
+/**
+ * Create tool call state
+ * @deprecated Use createStreamState from './toolParser/index.ts' instead
+ */
 export function createToolCallState(): ToolCallState {
-  return {
-    contentBuffer: '',
-    isBufferingToolCall: false,
-    toolCallIndex: 0,
-    hasEmittedToolCall: false
-  }
+  return createStreamState()
 }
 
 /**
  * Process streaming content and detect/parse tool calls
  * Returns the chunks that should be sent to the client
+ * @deprecated Use parseToolCallsStream from './toolParser/index.ts' instead
  */
 export function processStreamContent(
   content: string,
@@ -37,16 +57,16 @@ export function processStreamContent(
 ): { chunks: any[], shouldFlush: boolean } {
   const result: any[] = []
   const marker = '[function_calls]'
-  
+
   if (!content) {
     return { chunks: result, shouldFlush: false }
   }
-  
+
   state.contentBuffer += content
-  
+
   if (!state.isBufferingToolCall) {
     const markerIdx = state.contentBuffer.indexOf('[function_calls]')
-    
+
     if (markerIdx !== -1) {
       state.isBufferingToolCall = true
       if (markerIdx > 0) {
@@ -56,9 +76,9 @@ export function processStreamContent(
             ...baseChunk,
             choices: [{
               index: 0,
-              delta: { 
+              delta: {
                 ...(isFirstChunk ? { role: 'assistant' } : {}),
-                content: textBefore 
+                content: textBefore
               },
               finish_reason: null
             }]
@@ -81,9 +101,9 @@ export function processStreamContent(
                   ...baseChunk,
                   choices: [{
                     index: 0,
-                    delta: { 
+                    delta: {
                       ...(isFirstChunk ? { role: 'assistant' } : {}),
-                      content: textBefore 
+                      content: textBefore
                     },
                     finish_reason: null
                   }]
@@ -95,17 +115,17 @@ export function processStreamContent(
           }
         }
       }
-      
+
       if (foundPartial) {
         return { chunks: result, shouldFlush: false }
       }
     }
   }
-  
+
   if (state.isBufferingToolCall) {
     const hasFullMarker = state.contentBuffer.includes(marker)
     const isPrefix = marker.startsWith(state.contentBuffer)
-    
+
     if (!hasFullMarker && !isPrefix) {
       state.isBufferingToolCall = false
       if (state.contentBuffer && !state.hasEmittedToolCall) {
@@ -113,9 +133,9 @@ export function processStreamContent(
           ...baseChunk,
           choices: [{
             index: 0,
-            delta: { 
+            delta: {
               ...(isFirstChunk ? { role: 'assistant' } : {}),
-              content: state.contentBuffer 
+              content: state.contentBuffer
             },
             finish_reason: null
           }]
@@ -124,16 +144,16 @@ export function processStreamContent(
       state.contentBuffer = ''
       return { chunks: result, shouldFlush: true }
     }
-    
+
     const { content: cleanContent, toolCalls } = parseToolCallsFromText(state.contentBuffer, modelType)
-    
+
     if (toolCalls.length > 0) {
       for (const tc of toolCalls) {
         tc.index = state.toolCallIndex++
-        
+
         const rawText = tc.rawText
         delete tc.rawText
-        
+
         const toolCallData = {
           ...baseChunk,
           choices: [{
@@ -146,24 +166,24 @@ export function processStreamContent(
           }]
         }
         result.push(toolCallData)
-        
+
         if (rawText) {
           state.contentBuffer = state.contentBuffer.replace(rawText, '')
         }
       }
       state.hasEmittedToolCall = true
-      
+
       if (state.contentBuffer.includes('[/function_calls]')) {
         state.isBufferingToolCall = false
         state.contentBuffer = state.contentBuffer.replace(/\[\/?function_calls\]/g, '').trim()
       } else {
         state.isBufferingToolCall = state.contentBuffer.includes('[function_calls]')
       }
-      
+
       if (!state.isBufferingToolCall) {
         state.contentBuffer = ''
       }
-      
+
       return { chunks: result, shouldFlush: true }
     } else {
       if (state.contentBuffer.length > 500000) {
@@ -173,9 +193,9 @@ export function processStreamContent(
             ...baseChunk,
             choices: [{
               index: 0,
-              delta: { 
+              delta: {
                 ...(isFirstChunk ? { role: 'assistant' } : {}),
-                content: state.contentBuffer 
+                content: state.contentBuffer
               },
               finish_reason: null
             }]
@@ -187,16 +207,16 @@ export function processStreamContent(
       return { chunks: result, shouldFlush: false }
     }
   }
-  
+
   if (state.contentBuffer) {
     if (!state.hasEmittedToolCall) {
       result.push({
         ...baseChunk,
         choices: [{
           index: 0,
-          delta: { 
+          delta: {
             ...(isFirstChunk ? { role: 'assistant' } : {}),
-            content: state.contentBuffer 
+            content: state.contentBuffer
           },
           finish_reason: null
         }]
@@ -204,12 +224,13 @@ export function processStreamContent(
     }
     state.contentBuffer = ''
   }
-  
+
   return { chunks: result, shouldFlush: true }
 }
 
 /**
  * Flush any remaining content in the buffer at the end of stream
+ * @deprecated Use flushToolCallBuffer from './toolParser/index.ts' instead
  */
 export function flushToolCallBuffer(
   state: ToolCallState,
@@ -217,13 +238,13 @@ export function flushToolCallBuffer(
   modelType: string = 'default'
 ): any[] {
   const result: any[] = []
-  
+
   if (!state.contentBuffer) {
     return result
   }
-  
+
   const { content: cleanContent, toolCalls } = parseToolCallsFromText(state.contentBuffer, modelType)
-  
+
   if (toolCalls.length > 0) {
     for (const tc of toolCalls) {
       tc.index = state.toolCallIndex++
@@ -263,7 +284,7 @@ export function flushToolCallBuffer(
       console.warn('[StreamToolHandler] Discarding remaining buffer because tool calls were emitted:', state.contentBuffer.substring(0, 200) + '...')
     }
   }
-  
+
   state.contentBuffer = ''
   return result
 }
