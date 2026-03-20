@@ -1229,6 +1229,7 @@ export class MiniMaxStreamHandler {
   }
 
   async handleNonStream(stream: any): Promise<any> {
+    // Parameter 'stream' is response.data from forwarder.ts (the actual stream/data)
     return new Promise((resolve, reject) => {
       const data = {
         id: '',
