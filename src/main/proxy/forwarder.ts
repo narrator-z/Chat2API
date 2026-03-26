@@ -648,6 +648,7 @@ CRITICAL RULES:
       const adapter = new GLMAdapter(provider, account)
       const { response, conversationId } = await adapter.chatCompletion({
         model: actualModel,
+        originalModel: request.model,
         messages: transformedRequest.messages,
         stream: transformedRequest.stream,
         temperature: transformedRequest.temperature,
@@ -784,6 +785,7 @@ CRITICAL RULES:
       const adapter = new KimiAdapter(provider, account)
       const { response, conversationId } = await adapter.chatCompletion({
         model: actualModel,
+        originalModel: request.model,
         messages: transformed.messages,
         stream: request.stream,
         temperature: request.temperature,
@@ -929,6 +931,7 @@ CRITICAL RULES:
       const adapter = new QwenAdapter(provider, account)
       const { response, sessionId, reqId } = await adapter.chatCompletion({
         model: actualModel,
+        originalModel: request.model,
         messages: transformedRequest.messages as any,
         stream: request.stream,
         temperature: request.temperature,
@@ -1049,6 +1052,7 @@ CRITICAL RULES:
       const adapter = new QwenAiAdapter(provider, account)
       const { response, chatId, parentId } = await adapter.chatCompletion({
         model: actualModel,
+        originalModel: request.model,
         messages: transformed.messages as any,
         stream: request.stream,
         temperature: request.temperature,
@@ -1171,6 +1175,7 @@ CRITICAL RULES:
       const adapter = new ZaiAdapter(provider, account)
       const { response, chatId, requestId } = await adapter.chatCompletion({
         model: actualModel,
+        originalModel: request.model,
         messages: transformed.messages as any,
         stream: request.stream,
         temperature: request.temperature,
@@ -1294,6 +1299,7 @@ CRITICAL RULES:
       const adapter = new MiniMaxAdapter(provider, account)
       const { response, stream, chatId } = await adapter.chatCompletion({
         model: actualModel,
+        originalModel: request.model,
         messages: transformed.messages as any,
         stream: request.stream,
         temperature: request.temperature,

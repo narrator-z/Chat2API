@@ -46,6 +46,8 @@ interface ZaiMessage {
 
 interface ChatCompletionRequest {
   model: string
+  /** Original model name before mapping (used for feature detection like web search, thinking mode) */
+  originalModel?: string
   messages: ZaiMessage[]
   stream?: boolean
   temperature?: number
@@ -343,13 +345,32 @@ export class ZaiAdapter {
     const timestamp = Date.now()
     const signature = this.generateSignature(signaturePrompt, requestId, timestamp, userId)
 
+    // Determine if thinking and web search should be enabled
+    // Priority: explicit parameters > model name detection
+    // Use originalModel for feature detection (preserves user's intent before mapping)
+    const modelForDetection = request.originalModel || request.model
+    const modelLower = modelForDetection.toLowerCase()
+    
+    let enableThinking = !!request.reasoning_effort
+    let enableWebSearch = !!request.web_search
+    
+    // Auto-enable based on model name (if not explicitly set)
+    if (!enableThinking && (modelLower.includes('think') || modelLower.includes('r1'))) {
+      enableThinking = true
+      console.log('[Z.ai] Thinking mode enabled (from model name)')
+    }
+    if (!enableWebSearch && modelLower.includes('search')) {
+      enableWebSearch = true
+      console.log('[Z.ai] Web search enabled (from model name)')
+    }
+
     const features = {
       image_generation: false,
-      web_search: request.web_search || false,
+      web_search: enableWebSearch,
       auto_web_search: false,
       preview_mode: true,
       flags: [],
-      enable_thinking: !!request.reasoning_effort,
+      enable_thinking: enableThinking,
     }
 
     const requestBody = {
@@ -495,6 +516,7 @@ export class ZaiStreamHandler {
   private lastMessageId: string = ''
   private toolCallState: ToolCallState
   private sentRole: boolean = false
+  private sentThinkingRole: boolean = false
   private streamEnded: boolean = false
 
   constructor(model: string, onEnd?: (chatId: string) => void) {
@@ -604,7 +626,30 @@ export class ZaiStreamHandler {
             console.log('[Z.ai] Extracted assistant message id:', this.lastMessageId)
           }
 
-          if (result.phase === 'answer' && result.delta_content) {
+          if (result.phase === 'thinking' && result.delta_content) {
+            // Output thinking content as reasoning_content
+            if (!this.sentThinkingRole) {
+              transStream.write(
+                `data: ${JSON.stringify({
+                  id: this.chatId,
+                  model: this.model,
+                  object: 'chat.completion.chunk',
+                  choices: [{ index: 0, delta: { role: 'assistant', reasoning_content: '' }, finish_reason: null }],
+                  created: this.created,
+                })}\n\n`
+              )
+              this.sentThinkingRole = true
+            }
+            transStream.write(
+              `data: ${JSON.stringify({
+                id: this.chatId,
+                model: this.model,
+                object: 'chat.completion.chunk',
+                choices: [{ index: 0, delta: { reasoning_content: result.delta_content }, finish_reason: null }],
+                created: this.created,
+              })}\n\n`
+            )
+          } else if (result.phase === 'answer' && result.delta_content) {
             this.content += result.delta_content
             
             // Process tool call interception
@@ -613,7 +658,7 @@ export class ZaiStreamHandler {
               result.delta_content, 
               this.toolCallState, 
               baseChunk, 
-              !this.sentRole,
+              !this.sentRole && !this.sentThinkingRole,
               'zai'
             )
 
@@ -703,7 +748,7 @@ export class ZaiStreamHandler {
         choices: [
           {
             index: 0,
-            message: { role: 'assistant', content: '' },
+            message: { role: 'assistant', content: '', reasoning_content: '' },
             finish_reason: 'stop',
           },
         ],
@@ -712,9 +757,13 @@ export class ZaiStreamHandler {
       }
 
       let resolved = false
+      let reasoningContent = ''
       const resolveOnce = (result: any) => {
         if (resolved) return
         resolved = true
+        if (reasoningContent) {
+          result.choices[0].message.reasoning_content = reasoningContent
+        }
         resolve(result)
       }
 
@@ -753,7 +802,9 @@ export class ZaiStreamHandler {
               const result = eventData.data
               if (!result) return
 
-              if (result.phase === 'answer' && result.delta_content) {
+              if (result.phase === 'thinking' && result.delta_content) {
+                reasoningContent += result.delta_content
+              } else if (result.phase === 'answer' && result.delta_content) {
                 data.choices[0].message.content += result.delta_content
               } else if (result.phase === 'done' && result.done) {
                 console.log('[Z.ai] Non-stream finished, content length:', data.choices[0].message.content.length)
@@ -785,6 +836,7 @@ export class ZaiStreamHandler {
           // Handle SSE format in JSON response
           if (typeof streamData === 'string') {
             let content = ''
+            let reasoning = ''
             const lines = streamData.split('\n')
             for (const line of lines) {
               if (line.startsWith('data:')) {
@@ -793,7 +845,9 @@ export class ZaiStreamHandler {
                 try {
                   const event = JSON.parse(jsonStr)
                   if (event.type === 'chat:completion' && event.data) {
-                    if (event.data.phase === 'answer' && event.data.delta_content) {
+                    if (event.data.phase === 'thinking' && event.data.delta_content) {
+                      reasoning += event.data.delta_content
+                    } else if (event.data.phase === 'answer' && event.data.delta_content) {
                       content += event.data.delta_content
                     } else if (event.data.phase === 'done' && event.data.done) {
                       if (event.data.usage) {
@@ -807,6 +861,9 @@ export class ZaiStreamHandler {
               }
             }
             data.choices[0].message.content = content
+            if (reasoning) {
+              data.choices[0].message.reasoning_content = reasoning
+            }
           } else {
             // Direct JSON object
             data.choices[0].message.content = streamData.choices?.[0]?.message?.content || ''

@@ -1,4 +1,5 @@
 import { ipcMain, app, BrowserWindow, shell } from 'electron'
+import axios from 'axios'
 import { IpcChannels } from './channels'
 import { storeManager } from '../store/store'
 import { ProviderManager } from '../store/providers'
@@ -527,6 +528,53 @@ export async function registerIpcHandlers(mainWindow: BrowserWindow | null): Pro
 
   ipcMain.handle(IpcChannels.APP_GET_VERSION, async (): Promise<string> => {
     return app.getVersion()
+  })
+
+  ipcMain.handle(IpcChannels.APP_CHECK_UPDATE, async () => {
+    try {
+      const response = await axios.get('https://api.github.com/repos/xiaoY233/Chat2API/releases/latest', {
+        headers: {
+          'Accept': 'application/vnd.github.v3+json',
+          'User-Agent': 'Chat2API-Manager',
+        },
+        timeout: 10000,
+      })
+      const data = response.data
+      const latestVersion = data.tag_name?.replace(/^v/, '') || ''
+      const releaseUrl = data.html_url || 'https://github.com/xiaoY233/Chat2API/releases'
+      const currentVersion = app.getVersion()
+
+      // Simple semver comparison
+      const compareVersions = (v1: string, v2: string): number => {
+        const parts1 = v1.split('.').map(Number)
+        const parts2 = v2.split('.').map(Number)
+        const maxLength = Math.max(parts1.length, parts2.length)
+        for (let i = 0; i < maxLength; i++) {
+          const p1 = parts1[i] || 0
+          const p2 = parts2[i] || 0
+          if (p1 > p2) return 1
+          if (p1 < p2) return -1
+        }
+        return 0
+      }
+
+      const hasUpdate = latestVersion && compareVersions(latestVersion, currentVersion) > 0
+
+      return {
+        hasUpdate,
+        currentVersion,
+        latestVersion,
+        releaseUrl,
+      }
+    } catch (error) {
+      console.error('[App] Check update error:', error)
+      return {
+        hasUpdate: false,
+        currentVersion: app.getVersion(),
+        latestVersion: app.getVersion(),
+        error: error instanceof Error ? error.message : String(error),
+      }
+    }
   })
 
   ipcMain.handle(IpcChannels.APP_MINIMIZE, async (): Promise<void> => {

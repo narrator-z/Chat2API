@@ -320,7 +320,9 @@ export class KimiAdapter {
 
     // Determine if thinking and web search should be enabled
     // Priority: explicit parameters > model name detection
-    const modelLower = request.model.toLowerCase()
+    // Use originalModel for feature detection (preserves user's intent before mapping)
+    const modelForDetection = request.originalModel || request.model
+    const modelLower = modelForDetection.toLowerCase()
     
     let enableThinking = request.enableThinking ?? false
     let enableWebSearch = request.enableWebSearch ?? false

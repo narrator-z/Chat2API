@@ -71,6 +71,7 @@ export const IpcChannels = {
   STATISTICS_GET_TODAY: 'statistics:getToday',
 
   APP_GET_VERSION: 'app:getVersion',
+  APP_CHECK_UPDATE: 'app:checkUpdate',
   APP_MINIMIZE: 'app:minimize',
   APP_MAXIMIZE: 'app:maximize',
   APP_CLOSE: 'app:close',

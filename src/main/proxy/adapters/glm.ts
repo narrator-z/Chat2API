@@ -520,7 +520,9 @@ GLM STRICT RULES:
     }
 
     // Fallback: check model name for backward compatibility
-    const modelLower = request.model.toLowerCase()
+    // Use originalModel for feature detection (preserves user's intent before mapping)
+    const modelForDetection = request.originalModel || request.model
+    const modelLower = modelForDetection.toLowerCase()
     if (!chatMode && (modelLower.includes('think') || modelLower.includes('zero'))) {
       chatMode = 'zero'
       console.log('[GLM] Using reasoning mode (from model name)')
@@ -876,8 +878,16 @@ export class GLMStreamHandler {
 
             if (result.status !== 'finish') {
               if (result.parts) {
-                cachedParts.length = 0
-                cachedParts.push(...result.parts)
+                // Accumulate parts (same as handleStream), don't replace
+                // GLM sends incremental parts, each event only contains new content
+                result.parts.forEach((part: any) => {
+                  const index = cachedParts.findIndex((p) => p.logic_id === part.logic_id)
+                  if (index !== -1) {
+                    cachedParts[index] = part
+                  } else {
+                    cachedParts.push(part)
+                  }
+                })
               }
             } else {
               const searchMap = new Map<string, any>()

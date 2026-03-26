@@ -204,6 +204,7 @@ interface LogsAPI {
 
 interface AppAPI {
   getVersion: () => Promise<string>
+  checkUpdate: () => Promise<{ hasUpdate: boolean; currentVersion: string; latestVersion: string; releaseUrl?: string; error?: string }>
   minimize: () => Promise<void>
   maximize: () => Promise<void>
   close: () => Promise<void>

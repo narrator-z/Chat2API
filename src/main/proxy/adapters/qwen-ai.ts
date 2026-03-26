@@ -150,9 +150,16 @@ export class QwenAiAdapter {
     // Store in instance for later use
     ;(this as any)._forceThinking = forceThinking
     
-    if (MODEL_MAP[model]) {
-      return MODEL_MAP[model]
+    // Case-insensitive lookup in MODEL_MAP
+    const lowerModel = model.toLowerCase()
+    for (const [key, value] of Object.entries(MODEL_MAP)) {
+      if (key.toLowerCase() === lowerModel) {
+        return value
+      }
     }
+    
+    // If the model is already in the expected format (lowercase with hyphens), pass through
+    // e.g. qwen3.5-plus from external model mapping
     return model
   }
 
@@ -246,8 +253,23 @@ export class QwenAiAdapter {
 
     const modelId = this.mapModel(request.model)
     
-    // Get forced thinking mode setting (set via model name suffix)
-    const forceThinking = (this as any)._forceThinking
+    // Get forced thinking mode setting from originalModel (preserves user's intent before mapping)
+    // If originalModel exists, use it for thinking detection; otherwise fall back to request.model
+    const modelForThinking = request.originalModel || request.model
+    const modelLower = modelForThinking.toLowerCase()
+    let forceThinking: boolean | undefined
+    if (modelForThinking.endsWith('-thinking')) {
+      forceThinking = true
+    } else if (modelForThinking.endsWith('-fast')) {
+      forceThinking = false
+    } else if (modelLower.includes('think') || modelLower.includes('r1')) {
+      // Auto-enable thinking based on model name keywords (e.g. "Qwen3.5-Plus-AI-Think-Search")
+      forceThinking = true
+      console.log('[QwenAI] Thinking mode enabled (from model name keyword)')
+    } else {
+      // Use the forceThinking from mapModel if no originalModel-specific detection
+      forceThinking = (this as any)._forceThinking
+    }
 
     // Use session context passed from forwarder (avoid duplicate getOrCreateSession calls)
     const sessionContext = request.sessionContext
@@ -513,69 +535,97 @@ export class QwenAiStreamHandler {
             const content = delta.content || ''
 
             console.log('[QwenAI] Phase:', phase, 'Status:', status, 'Content:', content.substring(0, 50))
-            console.log('[QwenAI] hasSentReasoning:', hasSentReasoning, 'reasoningText:', reasoningText.length, 'summaryText:', summaryText.length)
 
-            if (phase === 'think' && status !== 'finished') {
-              reasoningText += content
+            if (phase === 'think') {
+              if (status !== 'finished') {
+                // Stream thinking content as reasoning_content in real-time
+                reasoningText += content
+                if (!hasSentReasoning) {
+                  transStream.write(
+                    `data: ${JSON.stringify({
+                      id: this.responseId || this.chatId,
+                      model: this.model,
+                      object: 'chat.completion.chunk',
+                      choices: [{ index: 0, delta: { role: 'assistant', reasoning_content: '' }, finish_reason: null }],
+                      created: this.created,
+                    })}\n\n`
+                  )
+                  hasSentReasoning = true
+                  console.log('[QwenAI] Sent reasoning role chunk')
+                }
+                if (content) {
+                  transStream.write(
+                    `data: ${JSON.stringify({
+                      id: this.responseId || this.chatId,
+                      model: this.model,
+                      object: 'chat.completion.chunk',
+                      choices: [{ index: 0, delta: { reasoning_content: content }, finish_reason: null }],
+                      created: this.created,
+                    })}\n\n`
+                  )
+                }
+              }
+              // When status === 'finished', the think phase is done
             } else if (phase === 'thinking_summary') {
               const extra = delta.extra || {}
               console.log('[QwenAI] thinking_summary extra:', JSON.stringify(extra).substring(0, 300))
               if (extra.summary_thought?.content) {
                 const newSummary = extra.summary_thought.content.join('\n')
                 if (newSummary && newSummary.length > summaryText.length) {
+                  // Send only the incremental diff as reasoning_content
+                  const diff = newSummary.substring(summaryText.length)
+                  if (diff) {
+                    if (!hasSentReasoning) {
+                      transStream.write(
+                        `data: ${JSON.stringify({
+                          id: this.responseId || this.chatId,
+                          model: this.model,
+                          object: 'chat.completion.chunk',
+                          choices: [{ index: 0, delta: { role: 'assistant', reasoning_content: '' }, finish_reason: null }],
+                          created: this.created,
+                        })}\n\n`
+                      )
+                      hasSentReasoning = true
+                    }
+                    transStream.write(
+                      `data: ${JSON.stringify({
+                        id: this.responseId || this.chatId,
+                        model: this.model,
+                        object: 'chat.completion.chunk',
+                        choices: [{ index: 0, delta: { reasoning_content: diff }, finish_reason: null }],
+                        created: this.created,
+                      })}\n\n`
+                    )
+                  }
                   summaryText = newSummary
                   console.log('[QwenAI] Updated summaryText, length:', summaryText.length)
                 }
               }
             } else if (phase === 'answer') {
-              sendInitialChunk()
+              if (!initialChunkSent) {
+                sendInitialChunk()
+              }
               console.log('[QwenAI] Entering answer branch, content:', content)
-              console.log('[QwenAI] hasSentReasoning:', hasSentReasoning, 'reasoningText:', reasoningText.length, 'summaryText:', summaryText.length)
               
               // Accumulate content for tool call detection
               this.content += content
               
-              const reasoningContent = reasoningText || summaryText
-              if (!hasSentReasoning && reasoningContent) {
-                console.log('[QwenAI] Sending first chunk with reasoning, reasoning length:', reasoningContent.length)
+              if (content) {
+                console.log('[QwenAI] Sending content chunk:', content)
                 const chunk = {
                   id: this.responseId || this.chatId,
                   model: this.model,
                   object: 'chat.completion.chunk',
-                  choices: [
-                    {
-                      index: 0,
-                      delta: {
-                        content: content,
-                        reasoning_content: reasoningContent,
-                      },
-                      finish_reason: null,
-                    },
-                  ],
+                  choices: [{ index: 0, delta: { content }, finish_reason: null }],
                   created: this.created,
                 }
-                const chunkStr = `data: ${JSON.stringify(chunk)}\n\n`
-                console.log('[QwenAI] Writing chunk to stream, length:', chunkStr.length)
-                transStream.write(chunkStr)
-                hasSentReasoning = true
-              } else {
-                if (content) {
-                  console.log('[QwenAI] Sending content chunk:', content)
-                  const chunk = {
-                    id: this.responseId || this.chatId,
-                    model: this.model,
-                    object: 'chat.completion.chunk',
-                    choices: [{ index: 0, delta: { content }, finish_reason: null }],
-                    created: this.created,
-                  }
-                  const chunkStr = `data: ${JSON.stringify(chunk)}\n\n`
-                  transStream.write(chunkStr)
-                  console.log('[QwenAI] Content chunk written')
-                } else {
-                  console.log('[QwenAI] No content to send in answer phase')
-                }
+                transStream.write(`data: ${JSON.stringify(chunk)}\n\n`)
+                console.log('[QwenAI] Content chunk written')
               }
             } else if (phase === null && content) {
+              if (!initialChunkSent) {
+                sendInitialChunk()
+              }
               // Accumulate content for tool call detection
               this.content += content
               

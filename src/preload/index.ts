@@ -382,17 +382,20 @@ const appAPI = {
   maximize: (): Promise<void> => 
     ipcRenderer.invoke(IpcChannels.APP_MAXIMIZE),
   
-  close: (): Promise<void> => 
+  close: (): Promise<void> =>
     ipcRenderer.invoke(IpcChannels.APP_CLOSE),
-  
-  showWindow: (): Promise<void> => 
+
+  showWindow: (): Promise<void> =>
     ipcRenderer.invoke(IpcChannels.APP_SHOW_WINDOW),
-  
-  hideWindow: (): Promise<void> => 
+
+  hideWindow: (): Promise<void> =>
     ipcRenderer.invoke(IpcChannels.APP_HIDE_WINDOW),
-  
-  openExternal: (url: string): Promise<void> => 
+
+  openExternal: (url: string): Promise<void> =>
     ipcRenderer.invoke(IpcChannels.APP_OPEN_EXTERNAL, url),
+
+  checkUpdate: (): Promise<{ hasUpdate: boolean; currentVersion: string; latestVersion: string; releaseUrl?: string; error?: string }> =>
+    ipcRenderer.invoke(IpcChannels.APP_CHECK_UPDATE),
 }
 
 const configAPI = {
