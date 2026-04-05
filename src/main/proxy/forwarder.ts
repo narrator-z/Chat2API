@@ -90,10 +90,23 @@ export class RequestForwarder {
     return null
   }
 
-  /**
-   * Check if messages contain MCP-style tool definitions
-   * MCP tools are defined in system message using <tools><tool> XML format
-   */
+  private applyToolCallsToResponse(
+    result: any,
+    model: string,
+    tools: any[] | undefined
+  ): void {
+    if (tools && tools.length > 0 && !isNativeFunctionCallingModel(model)) {
+      const content = result?.choices?.[0]?.message?.content || ''
+      const toolCalls = this.parseToolCallsFromContent(content)
+      
+      if (toolCalls && toolCalls.length > 0) {
+        result.choices[0].message.tool_calls = toolCalls
+        result.choices[0].message.content = null
+        result.choices[0].finish_reason = 'tool_calls'
+      }
+    }
+  }
+
   private hasMCPToolDefinitions(messages: any[]): boolean {
     for (const msg of messages) {
       if (msg.role === 'system' && typeof msg.content === 'string') {
@@ -636,20 +649,8 @@ CRITICAL RULES:
       // Non-streaming requests need to collect stream data and convert
       const result = await handler.handleNonStream(response.data)
       
-      // Parse tool calls from response content if using prompt-based tool calling
-      if (request.tools && request.tools.length > 0 && !isNativeFunctionCallingModel(request.model)) {
-        const content = result?.choices?.[0]?.message?.content || ''
-        const toolCalls = this.parseToolCallsFromContent(content)
-        
-        if (toolCalls && toolCalls.length > 0) {
-          // Found tool calls in response, add them to the response
-          result.choices[0].message.tool_calls = toolCalls
-          result.choices[0].message.content = null
-          result.choices[0].finish_reason = 'tool_calls'
-        }
-      }
+      this.applyToolCallsToResponse(result, request.model, request.tools)
       
-      // Delete session after non-streaming request ends
       if (deleteSessionCallback) {
         await deleteSessionCallback()
       }
@@ -757,19 +758,8 @@ CRITICAL RULES:
 
       const result = await handler.handleNonStream(response.data)
       
-      // Parse tool calls from response content if using prompt-based tool calling
-      if (request.tools && request.tools.length > 0 && !isNativeFunctionCallingModel(request.model)) {
-        const content = result?.choices?.[0]?.message?.content || ''
-        const toolCalls = this.parseToolCallsFromContent(content)
-        
-        if (toolCalls && toolCalls.length > 0) {
-          result.choices[0].message.tool_calls = toolCalls
-          result.choices[0].message.content = null
-          result.choices[0].finish_reason = 'tool_calls'
-        }
-      }
+      this.applyToolCallsToResponse(result, request.model, request.tools)
       
-      // Delete session after non-stream response
       if (shouldDeleteSession()) {
         const convId = handler.getConversationId()
         if (convId) {
@@ -860,19 +850,8 @@ CRITICAL RULES:
 
       const result = await handler.handleNonStream(response.data)
 
-      // Parse tool calls from response content if using prompt-based tool calling
-      if (request.tools && request.tools.length > 0 && !isNativeFunctionCallingModel(request.model)) {
-        const content = result?.choices?.[0]?.message?.content || ''
-        const toolCalls = this.parseToolCallsFromContent(content)
-        
-        if (toolCalls && toolCalls.length > 0) {
-          result.choices[0].message.tool_calls = toolCalls
-          result.choices[0].message.content = null
-          result.choices[0].finish_reason = 'tool_calls'
-        }
-      }
+      this.applyToolCallsToResponse(result, request.model, request.tools)
 
-      // Delete conversation if needed
       if (shouldDeleteSession()) {
         const realChatId = handler.getConversationId()
         if (realChatId && realChatId.startsWith('kimi-') === false) {
@@ -967,17 +946,7 @@ CRITICAL RULES:
 
       const result = await handler.handleNonStream(response.data, response)
 
-      // Parse tool calls from response content if using prompt-based tool calling
-      if (request.tools && request.tools.length > 0 && !isNativeFunctionCallingModel(request.model)) {
-        const content = result?.choices?.[0]?.message?.content || ''
-        const toolCalls = this.parseToolCallsFromContent(content)
-        
-        if (toolCalls && toolCalls.length > 0) {
-          result.choices[0].message.tool_calls = toolCalls
-          result.choices[0].message.content = null
-          result.choices[0].finish_reason = 'tool_calls'
-        }
-      }
+      this.applyToolCallsToResponse(result, request.model, request.tools)
 
       const sid = handler.getSessionId()
       if (deleteSessionCallback && sid) {
@@ -1066,17 +1035,7 @@ CRITICAL RULES:
 
       const result = await handler.handleNonStream(response.data)
 
-      // Parse tool calls from response content if using prompt-based tool calling
-      if (request.tools && request.tools.length > 0 && !isNativeFunctionCallingModel(request.model)) {
-        const content = result?.choices?.[0]?.message?.content || ''
-        const toolCalls = this.parseToolCallsFromContent(content)
-        
-        if (toolCalls && toolCalls.length > 0) {
-          result.choices[0].message.tool_calls = toolCalls
-          result.choices[0].message.content = null
-          result.choices[0].finish_reason = 'tool_calls'
-        }
-      }
+      this.applyToolCallsToResponse(result, request.model, request.tools)
 
       if (deleteChatCallback) {
         await deleteChatCallback(chatId)
@@ -1167,17 +1126,7 @@ CRITICAL RULES:
 
       const result = await handler.handleNonStream(response.data)
 
-      // Parse tool calls from response content if using prompt-based tool calling
-      if (request.tools && request.tools.length > 0 && !isNativeFunctionCallingModel(request.model)) {
-        const content = result?.choices?.[0]?.message?.content || ''
-        const toolCalls = this.parseToolCallsFromContent(content)
-        
-        if (toolCalls && toolCalls.length > 0) {
-          result.choices[0].message.tool_calls = toolCalls
-          result.choices[0].message.content = null
-          result.choices[0].finish_reason = 'tool_calls'
-        }
-      }
+      this.applyToolCallsToResponse(result, request.model, request.tools)
       
       if (deleteChatCallback) {
         await deleteChatCallback(chatId)
@@ -1273,19 +1222,8 @@ CRITICAL RULES:
       }
 
       if (response) {
-        // Parse tool calls from response content if using prompt-based tool calling
-        if (request.tools && request.tools.length > 0 && !isNativeFunctionCallingModel(request.model)) {
-          const content = response.data?.choices?.[0]?.message?.content || ''
-          const toolCalls = this.parseToolCallsFromContent(content)
-          
-          if (toolCalls && toolCalls.length > 0) {
-            response.data.choices[0].message.tool_calls = toolCalls
-            response.data.choices[0].message.content = null
-            response.data.choices[0].finish_reason = 'tool_calls'
-          }
-        }
+        this.applyToolCallsToResponse(response.data, request.model, request.tools)
         
-        // Response is already formatted as OpenAI-compatible format
         if (deleteChatCallback) {
           await deleteChatCallback(chatId)
         }
@@ -1454,19 +1392,8 @@ CRITICAL RULES:
       const handler = new PerplexityStreamHandler(actualModel, sessionId, undefined, adapter)
       const result = await handler.handleNonStream(stream)
       
-      // Parse tool calls from response content if tools were provided
-      if (request.tools && request.tools.length > 0 && !isNativeFunctionCallingModel(request.model)) {
-        const content = result?.choices?.[0]?.message?.content || ''
-        const toolCalls = this.parseToolCallsFromContent(content)
-        
-        if (toolCalls && toolCalls.length > 0) {
-          result.choices[0].message.tool_calls = toolCalls
-          result.choices[0].message.content = null
-          result.choices[0].finish_reason = 'tool_calls'
-        }
-      }
+      this.applyToolCallsToResponse(result, request.model, request.tools)
       
-      // Delete session after non-stream response
       if (shouldDeleteSession()) {
         await adapter.deleteSession(sessionId)
       }

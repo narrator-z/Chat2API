@@ -90,13 +90,21 @@ function mapOAuthCredentials(providerId: string | undefined, credentials: Record
   // For Mimo, map all three tokens
   if (providerId === 'mimo') {
     const result: Record<string, string> = {}
-    if (credentials['serviceToken']) {
+    // OAuth already returns credentials in correct format (service_token, user_id, ph_token)
+    // Check for final format first
+    if (credentials['service_token']) {
+      result['service_token'] = credentials['service_token']
+    } else if (credentials['serviceToken']) {
       result['service_token'] = credentials['serviceToken']
     }
-    if (credentials['userId']) {
+    if (credentials['user_id']) {
+      result['user_id'] = credentials['user_id']
+    } else if (credentials['userId']) {
       result['user_id'] = credentials['userId']
     }
-    if (credentials['xiaomichatbot_ph']) {
+    if (credentials['ph_token']) {
+      result['ph_token'] = credentials['ph_token']
+    } else if (credentials['xiaomichatbot_ph']) {
       result['ph_token'] = credentials['xiaomichatbot_ph']
     }
     return result

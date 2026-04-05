@@ -270,7 +270,7 @@ export function ModelMappingConfig({ onConfigChange }: ModelMappingConfigProps) 
     const addedModels = new Set<string>()
 
     providers.forEach(provider => {
-      provider.supportedModels.forEach(model => {
+      provider.supportedModels?.forEach(model => {
         if (!addedModels.has(model)) {
           addedModels.add(model)
           options.push({

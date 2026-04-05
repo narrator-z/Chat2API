@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback, useMemo, type ReactElement } from 'react'
 import { useTranslation } from 'react-i18next'
-import { List } from 'react-window'
+import { List, type RowComponentProps } from 'react-window'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -165,15 +165,15 @@ export function RequestLogList() {
   }, [])
 
   const RowComponent = useCallback(
-    ({ index, style }: { index: number; style: React.CSSProperties }): ReactElement | null => {
-      const log = logs[index]
+    ({ index, style, logs: rowLogs, onSelectLog }: RowComponentProps<RowProps>): ReactElement | null => {
+      const log = rowLogs[index]
       if (!log) return null
 
       return (
         <div
           style={style}
           className="px-2 pb-2"
-          onClick={() => handleSelectLog(log)}
+          onClick={() => onSelectLog(log)}
         >
           <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/30 hover:bg-muted/50 cursor-pointer transition-colors h-[68px]">
             <Badge variant="outline" className={getStatusColor(log.status, log.statusCode)}>
@@ -206,7 +206,7 @@ export function RequestLogList() {
         </div>
       )
     },
-    [logs, handleSelectLog]
+    []
   )
 
   const rowProps = useMemo<RowProps>(() => ({

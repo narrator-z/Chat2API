@@ -96,7 +96,7 @@ export function useDebouncedCallback<T extends (...args: any[]) => any>(
   return useMemo(() => debounce(callback, delay), [callback, delay])
 }
 
-import { useMemo, useCallback, useRef, useEffect } from 'react'
+import { useMemo, useEffect } from 'react'
 
 export function useDebounce<T>(value: T, delay: number): T {
   const [debouncedValue, setDebouncedValue] = useState<T>(value)

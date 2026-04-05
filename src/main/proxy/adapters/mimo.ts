@@ -202,8 +202,16 @@ function stripCitationsWithBuffer(text: string, buffer: { value: string }): stri
 
 function stripThinkTags(text: string): string {
   text = text.replace(/\u0000/g, '')
+  // Remove opening think tag (including partial ones at the beginning)
   text = text.replace(/^<think[^>]*>/, '')
+  // Remove &gt; entity which might be part of a broken tag
   text = text.replace(/^&gt;/, '')
+  // Also handle cases where only part of the tag is present
+  text = text.replace(/^hink>/, '')
+  text = text.replace(/^ink>/, '')
+  text = text.replace(/^nk>/, '')
+  text = text.replace(/^k>/, '')
+  text = text.replace(/^>/, '')
   return text
 }
 
@@ -385,9 +393,14 @@ export class MimoStreamHandler {
 
     let buffer = ''
     let currentEvent = ''
+    
+    // Track state and content
     let state: 'init' | 'thinking' | 'content' = 'init'
-    let thinkContent = ''
-    let normalContent = ''
+    let totalContent = ''
+    let lastProcessedIndex = 0
+    let thinkEndTagFound = false
+    const thinkEndTag1 = '</think>'
+    const thinkEndTag2 = '</thinkgt;'
 
     for await (const chunk of stream) {
       buffer += chunk.toString()
@@ -406,57 +419,72 @@ export class MimoStreamHandler {
             const mimoChunk: MimoChunk = { type: currentEvent as any, ...data }
 
             if ((mimoChunk.type === 'message' || mimoChunk.type === 'text') && mimoChunk.content) {
-              const text = (mimoChunk.content ?? '').replace(/\u0000/g, '')
-              this.content += text
+              const newText = (mimoChunk.content ?? '').replace(/\u0000/g, '')
+              totalContent += newText
 
               if (state === 'init') {
-                const thinkStartIdx = this.content.indexOf('<think')
+                const thinkStartIdx = totalContent.indexOf('<think')
                 if (thinkStartIdx !== -1) {
                   state = 'thinking'
+                  // Skip any content before <think tag
+                  lastProcessedIndex = thinkStartIdx
                 } else {
                   state = 'content'
                 }
               }
 
               if (state === 'thinking') {
-                const thinkEndIdx = this.content.indexOf('</think>')
-                const thinkEndIdx2 = this.content.indexOf('</thinkgt;')
-                const actualThinkEndIdx = thinkEndIdx !== -1 ? thinkEndIdx : thinkEndIdx2
-
-                if (actualThinkEndIdx !== -1) {
-                  const thinkPart = this.content.slice(0, actualThinkEndIdx)
-                  const newThink = stripThinkTags(thinkPart)
-                  const deltaThink = newThink.slice(thinkContent.length)
-                  if (deltaThink && this.thinkingMode === 'separate') {
-                    yield this.formatOpenAIChunk(id, created, { reasoning_content: stripCitationsWithBuffer(deltaThink, this.thinkingCitationBuffer) })
+                if (!thinkEndTagFound) {
+                  // Look for think end tag
+                  let thinkEndIdx = totalContent.indexOf(thinkEndTag1, lastProcessedIndex)
+                  let actualEndTag = thinkEndTag1
+                  
+                  if (thinkEndIdx === -1) {
+                    thinkEndIdx = totalContent.indexOf(thinkEndTag2, lastProcessedIndex)
+                    actualEndTag = thinkEndTag2
                   }
-                  thinkContent = newThink
 
-                  state = 'content'
-                  const rest = this.content.slice(actualThinkEndIdx + (thinkEndIdx !== -1 ? 8 : 10))
-                  if (rest.trim()) {
-                    const newNormal = stripCitationsWithBuffer(rest, this.citationBuffer)
-                    const deltaNormal = newNormal.slice(normalContent.length)
-                    if (deltaNormal) {
-                      yield this.formatOpenAIChunk(id, created, { content: deltaNormal })
+                  if (thinkEndIdx !== -1) {
+                    // Found the end of thinking
+                    thinkEndTagFound = true
+                    
+                    // Extract the thinking content between lastProcessedIndex and thinkEndIdx
+                    const thinkContent = totalContent.slice(lastProcessedIndex, thinkEndIdx)
+                    const cleanedThink = stripThinkTags(thinkContent)
+                    const cleanedThinkWithCitations = stripCitationsWithBuffer(cleanedThink, this.thinkingCitationBuffer)
+                    
+                    if (cleanedThinkWithCitations && this.thinkingMode === 'separate') {
+                      yield this.formatOpenAIChunk(id, created, { reasoning_content: cleanedThinkWithCitations })
                     }
-                    normalContent = newNormal
+                    
+                    // Move past the end tag
+                    lastProcessedIndex = thinkEndIdx + actualEndTag.length
+                    state = 'content'
+                  } else {
+                    // Still in thinking, process new content
+                    const thinkContent = totalContent.slice(lastProcessedIndex)
+                    const cleanedThink = stripThinkTags(thinkContent)
+                    const cleanedThinkWithCitations = stripCitationsWithBuffer(cleanedThink, this.thinkingCitationBuffer)
+                    
+                    if (cleanedThinkWithCitations && this.thinkingMode === 'separate') {
+                      yield this.formatOpenAIChunk(id, created, { reasoning_content: cleanedThinkWithCitations })
+                    }
+                    
+                    lastProcessedIndex = totalContent.length
                   }
-                } else {
-                  const newThink = stripThinkTags(this.content)
-                  const deltaThink = newThink.slice(thinkContent.length)
-                  if (deltaThink && this.thinkingMode === 'separate') {
-                    yield this.formatOpenAIChunk(id, created, { reasoning_content: stripCitationsWithBuffer(deltaThink, this.thinkingCitationBuffer) })
-                  }
-                  thinkContent = newThink
                 }
-              } else if (state === 'content') {
-                const newNormal = stripCitationsWithBuffer(this.content, this.citationBuffer)
-                const deltaNormal = newNormal.slice(normalContent.length)
-                if (deltaNormal) {
-                  yield this.formatOpenAIChunk(id, created, { content: deltaNormal })
+              }
+              
+              if (state === 'content' && lastProcessedIndex < totalContent.length) {
+                // Process content after thinking
+                const contentPart = totalContent.slice(lastProcessedIndex)
+                const cleanedContent = stripCitationsWithBuffer(contentPart, this.citationBuffer)
+                
+                if (cleanedContent) {
+                  yield this.formatOpenAIChunk(id, created, { content: cleanedContent })
                 }
-                normalContent = newNormal
+                
+                lastProcessedIndex = totalContent.length
               }
             } else if (mimoChunk.type === 'usage' && mimoChunk.usage) {
               this.usage = mimoChunk.usage
