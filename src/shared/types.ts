@@ -101,6 +101,7 @@ export interface AppConfig {
   oauthProxyMode: 'system' | 'none'
   sessionConfig: SessionConfig
   toolPromptConfig: ToolPromptConfig
+  language: 'zh-CN' | 'en-US'
 }
 
 export type LogLevel = 'debug' | 'info' | 'warn' | 'error'
