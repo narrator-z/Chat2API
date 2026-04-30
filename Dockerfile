@@ -16,14 +16,16 @@ RUN npm install --ignore-scripts
 
 # Copy source files
 COPY src/renderer ./src/renderer
+COPY src/main ./src/main
 COPY src/shared ./src/shared
-COPY vite.config.ts ./
+COPY electron.vite.config.ts ./
 COPY tsconfig.json ./
+COPY tsconfig.node.json ./
 COPY tailwind.config.js ./
 COPY postcss.config.js ./
 
 # Build frontend (renderer only)
-RUN npx vite build
+RUN npx electron-vite build --mode production
 
 # Stage 2: Build Node.js backend
 FROM node:20-alpine AS backend-builder
