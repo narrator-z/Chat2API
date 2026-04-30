@@ -41,15 +41,6 @@ COPY package.json package-lock.json* ./
 # Install dependencies
 RUN npm install --ignore-scripts
 
-# Copy source files
-COPY src/main ./src/main
-COPY src/shared ./src/shared
-COPY tsconfig.json ./
-COPY tsconfig.node.json ./
-
-# Build backend (only main process)
-RUN npx tsc --project tsconfig.node.json
-
 # Stage 3: Final runtime image
 FROM node:20-alpine
 
@@ -62,11 +53,15 @@ RUN npm config set registry https://registry.npmmirror.com
 COPY package.json package-lock.json* ./
 RUN npm install --production --ignore-scripts
 
-# Copy built backend
-COPY --from=backend-builder /app/out ./out
+# Install tsx for running TypeScript files
+RUN npm install -g tsx
 
 # Copy built frontend
 COPY --from=frontend-builder /app/out/renderer ./out/renderer
+
+# Copy backend source files
+COPY src/main ./src/main
+COPY src/shared ./src/shared
 
 # Create data directory
 RUN mkdir -p /app/data
@@ -87,4 +82,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
   CMD node -e "require('http').get('http://localhost:8088/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
 
 # Start the web server
-CMD ["node", "out/main/web-server.js"]
+CMD ["tsx", "src/main/web-server.ts"]
