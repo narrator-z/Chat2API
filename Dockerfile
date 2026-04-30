@@ -47,8 +47,8 @@ COPY src/shared ./src/shared
 COPY tsconfig.json ./
 COPY tsconfig.node.json ./
 
-# Build backend
-RUN npx tsc --project tsconfig.json
+# Build backend (only main process)
+RUN npx tsc --project tsconfig.node.json
 
 # Stage 3: Final runtime image
 FROM node:20-alpine
