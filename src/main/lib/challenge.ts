@@ -1,6 +1,14 @@
 import fs from 'fs'
 import path from 'path'
-import { app } from 'electron'
+
+// Conditionally import electron (only in Electron mode)
+let app: any = null
+try {
+  const electron = require('electron')
+  app = electron.app
+} catch (e) {
+  // Electron not available
+}
 
 export class DeepSeekHash {
   private wasmInstance: any
