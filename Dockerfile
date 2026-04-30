@@ -59,7 +59,7 @@ RUN npm config set registry https://registry.npmmirror.com
 
 # Install runtime dependencies only
 COPY package.json package-lock.json* ./
-RUN npm install --production
+RUN npm install --production --ignore-scripts
 
 # Copy built backend
 COPY --from=backend-builder /app/out ./out
