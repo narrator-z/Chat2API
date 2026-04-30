@@ -12,7 +12,7 @@ RUN npm config set registry https://registry.npmmirror.com
 COPY package.json package-lock.json* ./
 
 # Install dependencies
-RUN npm ci
+RUN npm install
 
 # Copy source files
 COPY src/renderer ./src/renderer
@@ -38,7 +38,7 @@ RUN npm config set registry https://registry.npmmirror.com
 COPY package.json package-lock.json* ./
 
 # Install dependencies
-RUN npm ci
+RUN npm install
 
 # Copy source files
 COPY src/main ./src/main
@@ -59,7 +59,7 @@ RUN npm config set registry https://registry.npmmirror.com
 
 # Install runtime dependencies only
 COPY package.json package-lock.json* ./
-RUN npm ci --production
+RUN npm install --production
 
 # Copy built backend
 COPY --from=backend-builder /app/out ./out
