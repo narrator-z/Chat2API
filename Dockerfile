@@ -12,7 +12,7 @@ RUN npm config set registry https://registry.npmmirror.com
 COPY package.json package-lock.json* ./
 
 # Install dependencies
-RUN npm install
+RUN npm install --ignore-scripts
 
 # Copy source files
 COPY src/renderer ./src/renderer
@@ -38,7 +38,7 @@ RUN npm config set registry https://registry.npmmirror.com
 COPY package.json package-lock.json* ./
 
 # Install dependencies
-RUN npm install
+RUN npm install --ignore-scripts
 
 # Copy source files
 COPY src/main ./src/main
