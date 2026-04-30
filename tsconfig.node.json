@@ -4,17 +4,15 @@
     "skipLibCheck": true,
     "module": "ESNext",
     "moduleResolution": "bundler",
-    "allowImportingTsExtensions": true,
     "allowSyntheticDefaultImports": true,
     "strict": true,
     "baseUrl": ".",
-    "typeRoots": ["./node_modules/@types", "./src/types"]
+    "typeRoots": ["./node_modules/@types", "./src/types"],
+    "outDir": "./out",
+    "rootDir": "./src"
   },
   "include": [
-    "vite.config.ts",
-    "electron.vite.config.ts",
     "src/main/**/*.ts",
-    "src/preload/**/*.ts",
     "src/shared/**/*.ts",
     "src/types/**/*.d.ts",
     "src/main/types/**/*.d.ts"
