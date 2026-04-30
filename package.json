@@ -77,7 +77,6 @@
     "@types/koa": "^2.15.0",
     "@types/koa-bodyparser": "^4.3.12",
     "@types/koa-router": "^7.4.8",
-    "@types/koa-static": "^0.1.0",
     "@types/mime-types": "^3.0.1",
     "@types/node": "^22.9.0",
     "@types/react": "^18.3.12",
