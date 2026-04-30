@@ -1,7 +1,7 @@
 # Multi-stage Dockerfile for Chat2API
 
 # Stage 1: Build React frontend
-FROM node:18-alpine AS frontend-builder
+FROM node:20-alpine AS frontend-builder
 
 WORKDIR /app
 
@@ -27,7 +27,7 @@ COPY postcss.config.js ./
 RUN npm run build -- --mode production
 
 # Stage 2: Build Node.js backend
-FROM node:18-alpine AS backend-builder
+FROM node:20-alpine AS backend-builder
 
 WORKDIR /app
 
@@ -50,7 +50,7 @@ COPY tsconfig.node.json ./
 RUN npx tsc --project tsconfig.json
 
 # Stage 3: Final runtime image
-FROM node:18-alpine
+FROM node:20-alpine
 
 WORKDIR /app
 
