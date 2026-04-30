@@ -1,12 +1,33 @@
 /**
  * Credential Storage Module - Core Storage Implementation
- * Uses electron-store for persistent storage
- * Uses Electron's safeStorage API for sensitive data encryption
+ * Uses electron-store for persistent storage (Electron mode)
+ * Uses file-store for Docker/web deployment
+ * Uses Electron's safeStorage API for sensitive data encryption (Electron mode)
  */
 
-import { app, safeStorage, BrowserWindow } from 'electron'
+// Detect if running in web/Docker mode (no Electron)
+const isWebMode = typeof process !== 'undefined' && process.env.WEB_MODE === 'true'
+
+// Conditionally import electron (only in Electron mode)
+let app: any = null
+let safeStorage: any = null
+let BrowserWindow: any = null
+
+if (!isWebMode) {
+  try {
+    const electron = require('electron')
+    app = electron.app
+    safeStorage = electron.safeStorage
+    BrowserWindow = electron.BrowserWindow
+  } catch (e) {
+    // Electron not available, fall back to web mode
+    console.warn('[Store] Electron not available, using web mode')
+  }
+}
+
 import { homedir } from 'os'
 import { join } from 'path'
+
 import {
   StoreSchema,
   AppConfig,

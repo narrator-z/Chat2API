@@ -1,6 +1,14 @@
-import { net } from 'electron'
 import { Readable } from 'stream'
 import { Account, Provider } from '../store/types'
+
+// Conditionally import electron (only in Electron mode)
+let net: any = null
+try {
+  const electron = require('electron')
+  net = electron.net
+} catch (e) {
+  // Electron not available, will use axios instead
+}
 
 const PERPLEXITY_URL = 'https://www.perplexity.ai'
 const QUERY_ENDPOINT = `${PERPLEXITY_URL}/rest/sse/perplexity_ask`
