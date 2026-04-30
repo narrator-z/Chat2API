@@ -67,9 +67,6 @@ COPY --from=backend-builder /app/out ./out
 # Copy built frontend
 COPY --from=frontend-builder /app/out/renderer ./out/renderer
 
-# Copy static assets
-COPY src/assets ./src/assets
-
 # Create data directory
 RUN mkdir -p /app/data
 
