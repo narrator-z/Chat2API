@@ -1,0 +1,46 @@
+version: '3.8'
+
+services:
+  chat2api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: chat2api-manager
+    restart: unless-stopped
+    
+    # Port mapping
+    ports:
+      - "8088:8088"  # API proxy port
+      - "3001:3001"  # Web interface port
+
+    # Environment variables
+    environment:
+      - NODE_ENV=production
+      - DATA_DIR=/app/data
+      - API_PORT=8088
+      - WEB_PORT=3001
+      - API_HOST=0.0.0.0
+      - WEB_HOST=0.0.0.0
+      # Optional: Enable API key authentication
+      # - ENABLE_API_KEY=true
+      # Optional: Management API secret
+      # - MANAGEMENT_API_SECRET=your-secret-key
+    
+    # Volume for data persistence
+    volumes:
+      - ./data:/app/data
+    
+    # Health check
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:8088/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    
+    # Logging
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
