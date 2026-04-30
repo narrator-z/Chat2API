@@ -16,7 +16,6 @@ RUN npm install --ignore-scripts
 
 # Copy source files
 COPY src/renderer ./src/renderer
-COPY src/main ./src/main
 COPY src/shared ./src/shared
 COPY electron.vite.config.ts ./
 COPY tsconfig.json ./
@@ -24,7 +23,8 @@ COPY tsconfig.node.json ./
 COPY tailwind.config.js ./
 COPY postcss.config.js ./
 
-# Build frontend (renderer only)
+# Build frontend (renderer only) - create dummy preload to satisfy electron-vite
+RUN mkdir -p src/preload && echo "export {}" > src/preload/index.ts
 RUN npx electron-vite build --mode production
 
 # Stage 2: Build Node.js backend
