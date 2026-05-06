@@ -13,6 +13,18 @@ import { proxyStatusManager } from './status'
 import { storeManager } from '../store/store'
 import { sessionManager } from './sessionManager'
 
+// Detect web mode
+const isWebMode = typeof process !== 'undefined' && process.env.WEB_MODE === 'true'
+
+// Helper function to get the correct store manager
+async function getStore() {
+  if (isWebMode) {
+    const { fileStoreManager } = await import('../store/file-store')
+    return fileStoreManager
+  }
+  return storeManager
+}
+
 const SLOW_REQUEST_THRESHOLD_MS = 1500
 
 /**
@@ -73,8 +85,9 @@ export class ProxyServer {
         return
       }
 
-      const config = storeManager.getConfig()
-      
+      const store = await getStore()
+      const config = store.getConfig()
+
       if (config.enableApiKey && config.apiKeys && config.apiKeys.length > 0) {
         const authHeader = ctx.get('Authorization') || ''
         const providedKey = authHeader.startsWith('Bearer ') 
@@ -119,7 +132,7 @@ export class ProxyServer {
               }
             : k
         )
-        storeManager.updateConfig({ apiKeys: updatedKeys })
+        store.updateConfig({ apiKeys: updatedKeys })
       }
       
       await next()
@@ -136,15 +149,19 @@ export class ProxyServer {
         (ctx.status >= 400 || latency >= SLOW_REQUEST_THRESHOLD_MS)
 
       if (shouldRecordAccessLog) {
-        storeManager.addLog('warn', `${ctx.method} ${ctx.path} ${ctx.status} ${latency}ms`, {
-          data: {
-            method: ctx.method,
-            path: ctx.path,
-            status: ctx.status,
-            latency,
-            clientIP: ctx.ip,
-            slowRequest: latency >= SLOW_REQUEST_THRESHOLD_MS,
-          },
+        getStore().then(s => {
+          s.addLog('warn', `${ctx.method} ${ctx.path} ${ctx.status} ${latency}ms`, {
+            data: {
+              method: ctx.method,
+              path: ctx.path,
+              status: ctx.status,
+              latency,
+              clientIP: ctx.ip,
+              slowRequest: latency >= SLOW_REQUEST_THRESHOLD_MS,
+            },
+          })
+        }).catch(e => {
+          console.error('[ProxyServer] Failed to log access:', e)
         })
       }
     })
@@ -204,7 +221,8 @@ export class ProxyServer {
       }
 
       try {
-        const config = storeManager.getConfig()
+        const store = await getStore()
+        const config = store.getConfig()
         if (!config.managementApi?.enableManagementApi) {
           ctx.status = 404
           ctx.body = {
@@ -259,13 +277,18 @@ export class ProxyServer {
       const status = err.status || 500
       const message = err.message || 'Internal Server Error'
 
-      storeManager.addLog('error', `Server error: ${message}`, {
-        data: {
-          status,
-          path: ctx.path,
-          method: ctx.method,
-          stack: err.stack,
-        },
+      // Log error asynchronously
+      getStore().then(store => {
+        store.addLog('error', `Server error: ${message}`, {
+          data: {
+            status,
+            path: ctx.path,
+            method: ctx.method,
+            stack: err.stack,
+          },
+        })
+      }).catch(e => {
+        console.error('[ProxyServer] Failed to log error:', e)
       })
     })
   }
@@ -290,17 +313,25 @@ export class ProxyServer {
           proxyStatusManager.setPort(this.port)
           proxyStatusManager.setHost(this.host)
 
-          storeManager.addLog('info', `Proxy server started successfully, listening on ${this.host}:${this.port}`)
+          getStore().then(store => {
+            store.addLog('info', `Proxy server started successfully, listening on ${this.host}:${this.port}`)
+          }).catch(e => {
+            console.error('[ProxyServer] Failed to log start:', e)
+          })
 
           resolve(true)
         })
 
         this.server.on('error', (err: NodeJS.ErrnoException) => {
-          if (err.code === 'EADDRINUSE') {
-            storeManager.addLog('error', `Port ${this.port} is already in use`)
-          } else {
-            storeManager.addLog('error', `Server error: ${err.message}`)
-          }
+          getStore().then(store => {
+            if (err.code === 'EADDRINUSE') {
+              store.addLog('error', `Port ${this.port} is already in use`)
+            } else {
+              store.addLog('error', `Server error: ${err.message}`)
+            }
+          }).catch(e => {
+            console.error('[ProxyServer] Failed to log error:', e)
+          })
           this.server = null
           resolve(false)
         })
@@ -309,7 +340,11 @@ export class ProxyServer {
           this.server = null
         })
       } catch (error) {
-        storeManager.addLog('error', `Failed to start server: ${error instanceof Error ? error.message : 'Unknown error'}`)
+        getStore().then(store => {
+          store.addLog('error', `Failed to start server: ${error instanceof Error ? error.message : 'Unknown error'}`)
+        }).catch(e => {
+          console.error('[ProxyServer] Failed to log error:', e)
+        })
         resolve(false)
       }
     })
@@ -328,7 +363,11 @@ export class ProxyServer {
     return new Promise((resolve) => {
       this.server!.close((err) => {
         if (err) {
-          storeManager.addLog('error', `Failed to stop server: ${err.message}`)
+          getStore().then(store => {
+            store.addLog('error', `Failed to stop server: ${err.message}`)
+          }).catch(e => {
+            console.error('[ProxyServer] Failed to log error:', e)
+          })
           resolve(false)
           return
         }
@@ -336,7 +375,11 @@ export class ProxyServer {
         this.server = null
         proxyStatusManager.stop()
 
-        storeManager.addLog('info', 'Proxy server stopped')
+        getStore().then(store => {
+          store.addLog('info', 'Proxy server stopped')
+        }).catch(e => {
+          console.error('[ProxyServer] Failed to log stop:', e)
+        })
 
         resolve(true)
       })
