@@ -135,6 +135,39 @@ function applyEnvironmentOverrides(): void {
 async function startWebServer(): Promise<void> {
   const app = new Koa()
 
+  // Add initialization check middleware
+  app.use(async (ctx, next) => {
+    if (!isAppInitialized()) {
+      // For API requests, return 503
+      if (ctx.path.startsWith('/manage') || ctx.path.startsWith('/api')) {
+        ctx.status = 503
+        ctx.body = {
+          error: {
+            message: 'Service not ready, please try again later',
+            type: 'service_unavailable',
+            code: 'SERVICE_NOT_READY',
+          },
+        }
+        return
+      }
+      // For web pages, return a simple HTML page that retries
+      ctx.status = 503
+      ctx.type = 'text/html'
+      ctx.body = `
+        <html>
+          <head><title>Initializing...</title></head>
+          <body>
+            <h1>Service Initializing</h1>
+            <p>Please wait...</p>
+            <script>setTimeout(() => location.reload(), 2000)</script>
+          </body>
+        </html>
+      `
+      return
+    }
+    await next()
+  })
+  
   // Read web-api-bridge.js content to inject into HTML
   const bridgePaths = [
     join(__dirname, 'web-api-bridge.js'),           // compiled: out/main/
