@@ -54,8 +54,6 @@ function getGlobalFileStoreManager(): FileStoreManager {
  * Responsible for data persistence using JSON files
  */
 class FileStoreManager {
-  private static instanceCounter = 0
-  private readonly instanceId: number
   private data: StoreSchema | null = null
   private _isInitialized: boolean = false
   private initializationError: Error | null = null
@@ -64,12 +62,6 @@ class FileStoreManager {
   private logFlushTimer: NodeJS.Timeout | null = null
   private readonly logFlushDelayMs = 2000
   private dataDir: string = '/app/data'
-
-  constructor() {
-    FileStoreManager.instanceCounter++
-    this.instanceId = FileStoreManager.instanceCounter
-    console.log(`[FileStore] Constructor called, instance #${this.instanceId} created`)
-  }
 
   /**
    * Set data directory
@@ -104,9 +96,7 @@ class FileStoreManager {
    * Load data from JSON files or create default data
    */
   async initialize(): Promise<void> {
-    console.log(`[FileStore] initialize() called on instance #${this.instanceId}, _isInitialized:`, this._isInitialized)
     if (this._isInitialized) {
-      console.log(`[FileStore] Instance #${this.instanceId} already initialized, skipping`)
       return
     }
 
