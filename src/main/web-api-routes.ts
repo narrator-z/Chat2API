@@ -22,6 +22,7 @@ const router = new Router<DefaultState, DefaultContext>({ prefix: '/manage' })
 // Ensure fileStoreManager is initialized before handling any request
 // This is a safety net in case initialize() wasn't called yet
 async function ensureInitialized(ctx: any, next: any): Promise<void> {
+  console.log('[WebAPI] ensureInitialized check, initialized:', fileStoreManager.checkInitialized())
   if (!fileStoreManager.checkInitialized()) {
     console.warn('[WebAPI] fileStoreManager not initialized, initializing now...')
     await fileStoreManager.initialize()

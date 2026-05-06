@@ -13,6 +13,7 @@ import { proxyServer } from './proxy/server'
 import { storeManager, setStoreDelegate } from './store/store'
 import { proxyStatusManager } from './proxy/status'
 import { createWebApiRouter } from './web-api-routes'
+import { fileStoreManager } from './store/file-store'
 
 // Get __dirname equivalent in ESM
 const __filename = fileURLToPath(import.meta.url)
@@ -45,7 +46,6 @@ async function initializeApp(): Promise<void> {
   // Initialize storage
   try {
     // Use file-store for web mode
-    const { fileStoreManager } = await import('./store/file-store')
     fileStoreManager.setDataDir(DATA_DIR)
     await fileStoreManager.initialize()
     console.log('[WebServer] Storage initialized successfully')
@@ -60,7 +60,7 @@ async function initializeApp(): Promise<void> {
   }
 
   // Apply environment variable overrides
-  await applyEnvironmentOverrides()
+  applyEnvironmentOverrides()
 
   // Start proxy server
   const proxyStarted = await proxyServer.start(API_PORT, API_HOST)
@@ -78,8 +78,7 @@ async function initializeApp(): Promise<void> {
 /**
  * Apply environment variable overrides to config
  */
-async function applyEnvironmentOverrides(): Promise<void> {
-  const { fileStoreManager } = await import('./store/file-store')
+function applyEnvironmentOverrides(): void {
   const config = fileStoreManager.getConfig()
 
   if (process.env.ENABLE_API_KEY === 'true') {
@@ -170,6 +169,13 @@ async function startWebServer(): Promise<void> {
   // Serve static files ONLY for /assets/* (after SPA fallback for root)
   // This ensures /manage/* routes reach the API handler
   app.use(serve(buildPath, { path: '/assets' }))
+
+  // Debug middleware to trace request flow
+  app.use(async (ctx, next) => {
+    console.log('[Debug] Path:', ctx.path, 'Matched route will be:', ctx._matchedRoute || 'none')
+    await next()
+    console.log('[Debug] Response:', ctx.status, ctx.path)
+  })
 
   // Mount management REST API (after static files so API takes precedence for /manage/*)
   const webApi = createWebApiRouter()

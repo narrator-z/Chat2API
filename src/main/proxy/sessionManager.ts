@@ -4,7 +4,19 @@
  */
 
 import { storeManager } from '../store/store'
+import { fileStoreManager } from '../store/file-store'
 import { SessionRecord, SessionConfig, ChatMessage, DEFAULT_SESSION_CONFIG } from '../store/types'
+
+// Detect web mode
+const isWebMode = typeof process !== 'undefined' && process.env.WEB_MODE === 'true'
+
+// Helper function to get the correct store manager
+function getStore() {
+  if (isWebMode) {
+    return fileStoreManager
+  }
+  return storeManager
+}
 
 export interface CreateSessionOptions {
   providerId: string
@@ -48,11 +60,11 @@ class SessionManagerClass {
   }
 
   getSessionConfig(): SessionConfig {
-    return storeManager.getSessionConfig()
+    return getStore().getSessionConfig()
   }
 
   updateSessionConfig(updates: Partial<SessionConfig>): SessionConfig {
-    const newConfig = storeManager.updateSessionConfig(updates)
+    const newConfig = getStore().updateSessionConfig(updates)
     console.log('[SessionManager] Session config updated:', newConfig)
     return newConfig
   }
@@ -88,7 +100,7 @@ class SessionManagerClass {
   }
 
   getActiveSession(providerId: string, accountId: string): SessionRecord | undefined {
-    const sessions = storeManager.getSessionsByProviderId(providerId)
+    const sessions = getStore().getSessionsByProviderId(providerId)
     const accountSessions = sessions.filter(s => s.accountId === accountId)
     const config = this.getSessionConfig()
     const timeoutMs = config.sessionTimeout * 60 * 1000
@@ -116,24 +128,24 @@ class SessionManagerClass {
       model,
     }
     
-    storeManager.addSession(session)
+    getStore().addSession(session)
     return session
   }
 
   getSession(sessionId: string): SessionRecord | undefined {
-    return storeManager.getSessionById(sessionId)
+    return getStore().getSessionById(sessionId)
   }
 
   getAllActiveSessions(): SessionRecord[] {
-    return storeManager.getActiveSessions()
+    return getStore().getActiveSessions()
   }
 
   getAllSessions(): SessionRecord[] {
-    return storeManager.getSessions()
+    return getStore().getSessions()
   }
 
   deleteSession(sessionId: string): boolean {
-    const result = storeManager.deleteSession(sessionId)
+    const result = getStore().deleteSession(sessionId)
     if (result) {
       console.log('[SessionManager] Deleted session:', sessionId)
     }
@@ -141,7 +153,7 @@ class SessionManagerClass {
   }
 
   cleanExpiredSessions(): number {
-    const removedCount = storeManager.cleanExpiredSessions()
+    const removedCount = getStore().cleanExpiredSessions()
     if (removedCount > 0) {
       console.log('[SessionManager] Cleaned expired sessions:', removedCount)
     }
@@ -149,16 +161,16 @@ class SessionManagerClass {
   }
 
   clearAllSessions(): void {
-    storeManager.clearAllSessions()
+    getStore().clearAllSessions()
     console.log('[SessionManager] Cleared all sessions')
   }
 
   getSessionsByAccount(accountId: string): SessionRecord[] {
-    return storeManager.getSessionsByAccountId(accountId)
+    return getStore().getSessionsByAccountId(accountId)
   }
 
   getSessionsByProvider(providerId: string): SessionRecord[] {
-    return storeManager.getSessionsByProviderId(providerId)
+    return getStore().getSessionsByProviderId(providerId)
   }
 
   shouldDeleteAfterChat(): boolean {

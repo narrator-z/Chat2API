@@ -12,6 +12,7 @@ import managementRoutes from './routes/management'
 import { proxyStatusManager } from './status'
 import { storeManager } from '../store/store'
 import { sessionManager } from './sessionManager'
+import { fileStoreManager } from '../store/file-store'
 
 // Detect web mode
 const isWebMode = typeof process !== 'undefined' && process.env.WEB_MODE === 'true'
@@ -19,7 +20,6 @@ const isWebMode = typeof process !== 'undefined' && process.env.WEB_MODE === 'tr
 // Helper function to get the correct store manager
 async function getStore() {
   if (isWebMode) {
-    const { fileStoreManager } = await import('../store/file-store')
     return fileStoreManager
   }
   return storeManager

@@ -36,13 +36,26 @@ import { BUILTIN_PROMPTS } from '../data/builtin-prompts'
 import { RequestLogManager } from '../requestLogs/manager'
 import { normalizeRequestLogConfig } from '../requestLogs/types'
 
+// Global singleton instance - ensures same instance across all imports
+let _globalFileStoreManager: FileStoreManager | null = null
+
+/**
+ * Get or create the global FileStoreManager singleton
+ */
+function getGlobalFileStoreManager(): FileStoreManager {
+  if (!_globalFileStoreManager) {
+    _globalFileStoreManager = new FileStoreManager()
+  }
+  return _globalFileStoreManager
+}
+
 /**
  * File-based Store Manager Class
  * Responsible for data persistence using JSON files
  */
 class FileStoreManager {
   private data: StoreSchema | null = null
-  private isInitialized: boolean = false
+  private _isInitialized: boolean = false
   private initializationError: Error | null = null
   private requestLogManager: RequestLogManager | null = null
   private pendingLogs: LogEntry[] = []
@@ -61,7 +74,7 @@ class FileStoreManager {
    * Check if storage is initialized
    */
   checkInitialized(): boolean {
-    return this.isInitialized
+    return this._isInitialized
   }
 
   /**
@@ -83,7 +96,9 @@ class FileStoreManager {
    * Load data from JSON files or create default data
    */
   async initialize(): Promise<void> {
-    if (this.isInitialized) {
+    console.log('[FileStore] initialize() called on instance, _isInitialized:', this._isInitialized)
+    if (this._isInitialized) {
+      console.log('[FileStore] Already initialized, skipping')
       return
     }
 
@@ -96,7 +111,7 @@ class FileStoreManager {
       this.data = this.loadData()
       await this.initializeRequestLogManager()
       await this.initializeDefaultProviders()
-      this.isInitialized = true
+      this._isInitialized = true
       this.initializationError = null
       console.log('[FileStore] Storage initialized successfully')
     } catch (error) {
@@ -205,44 +220,37 @@ class FileStoreManager {
 
   /**
    * Initialize Default Providers
+   * Validates and updates builtin provider configurations
    */
   private async initializeDefaultProviders(): Promise<void> {
+    // Only process if there are no custom providers
+    // This preserves user-added custom providers
     const providers = this.data?.providers || []
     const builtinIds = BUILTIN_PROVIDERS.map(p => p.id)
-    
-    const validProviders = providers.filter((p: Provider) => {
-      if (p.type === 'builtin') {
-        return builtinIds.includes(p.id)
-      }
-      return true
-    })
-    
-    const userModelOverrides = this.data?.userModelOverrides || {}
-    
-    const updatedProviders = validProviders.map((p: Provider) => {
-      if (p.type === 'builtin') {
-        const builtinConfig = BUILTIN_PROVIDERS.find(bp => bp.id === p.id)
-        if (builtinConfig) {
-          const hasUserOverrides = userModelOverrides[p.id] && 
-            ((userModelOverrides[p.id].addedModels && userModelOverrides[p.id].addedModels.length > 0) ||
-             (userModelOverrides[p.id].excludedModels && userModelOverrides[p.id].excludedModels.length > 0))
-          
-          return { 
-            ...p, 
-            apiEndpoint: builtinConfig.apiEndpoint,
-            chatPath: builtinConfig.chatPath,
-            supportedModels: hasUserOverrides ? p.supportedModels : builtinConfig.supportedModels,
-            modelMappings: hasUserOverrides ? p.modelMappings : builtinConfig.modelMappings,
-            headers: builtinConfig.headers,
-            description: builtinConfig.description,
-          }
+
+    // Get builtin providers from stored data
+    const storedBuiltins = providers.filter((p: Provider) => p.type === 'builtin')
+    const customProviders = providers.filter((p: Provider) => p.type === 'custom')
+
+    // Update builtin providers with latest configuration
+    const updatedBuiltins = storedBuiltins.map((p: Provider) => {
+      const builtinConfig = BUILTIN_PROVIDERS.find(bp => bp.id === p.id)
+      if (builtinConfig) {
+        return {
+          ...p,
+          apiEndpoint: builtinConfig.apiEndpoint,
+          chatPath: builtinConfig.chatPath,
+          supportedModels: builtinConfig.supportedModels,
+          modelMappings: builtinConfig.modelMappings,
+          headers: builtinConfig.headers,
+          description: builtinConfig.description,
         }
       }
       return p
     })
-    
-    this.data!.providers = updatedProviders
-    this.saveData()
+
+    // Merge updated builtins with custom providers
+    this.data!.providers = [...updatedBuiltins, ...customProviders]
   }
 
   /**
@@ -836,6 +844,79 @@ class FileStoreManager {
     return removedCount
   }
 
+  getSessionConfig(): SessionConfig {
+    this.ensureInitialized()
+    const config = this.getConfig()
+    return config.sessionConfig || DEFAULT_SESSION_CONFIG
+  }
+
+  updateSessionConfig(updates: Partial<SessionConfig>): SessionConfig {
+    this.ensureInitialized()
+    const currentConfig = this.getConfig()
+    const newSessionConfig = {
+      ...(currentConfig.sessionConfig || DEFAULT_SESSION_CONFIG),
+      ...updates,
+    }
+    this.updateConfig({ sessionConfig: newSessionConfig })
+    return newSessionConfig
+  }
+
+  getSessionsByProviderId(providerId: string): SessionRecord[] {
+    this.ensureInitialized()
+    const sessions = this.data!.sessions || []
+    return sessions.filter((s: SessionRecord) => s.providerId === providerId)
+  }
+
+  getSessionsByAccountId(accountId: string): SessionRecord[] {
+    this.ensureInitialized()
+    const sessions = this.data!.sessions || []
+    return sessions.filter((s: SessionRecord) => s.accountId === accountId)
+  }
+
+  getSessions(): SessionRecord[] {
+    this.ensureInitialized()
+    return this.data!.sessions || []
+  }
+
+  getActiveSessions(): SessionRecord[] {
+    this.ensureInitialized()
+    const sessions = this.data!.sessions || []
+    const config = this.getSessionConfig()
+    const timeoutMs = config.sessionTimeout * 60 * 1000
+    const now = Date.now()
+
+    return sessions.filter((s: SessionRecord) =>
+      s.status === 'active' &&
+      (now - s.lastActiveAt) < timeoutMs
+    )
+  }
+
+  addMessageToSession(sessionId: string, message: ChatMessage): SessionRecord | null {
+    this.ensureInitialized()
+    const sessions = this.data!.sessions || []
+    const index = sessions.findIndex((s: SessionRecord) => s.id === sessionId)
+
+    if (index === -1) {
+      return null
+    }
+
+    const session = sessions[index]
+    session.messages = [...session.messages, message]
+    session.lastActiveAt = Date.now()
+    session.updatedAt = Date.now()
+
+    sessions[index] = session
+    this.data!.sessions = sessions
+    this.saveData()
+    return session
+  }
+
+  clearAllSessions(): void {
+    this.ensureInitialized()
+    this.data!.sessions = []
+    this.saveData()
+  }
+
   getSessionById(id: string): SessionRecord | undefined {
     this.ensureInitialized()
     const sessions = this.data!.sessions || []
@@ -1037,5 +1118,6 @@ class FileStoreManager {
   }
 }
 
-export const fileStoreManager = new FileStoreManager()
+// Export the global singleton instance
+export const fileStoreManager = getGlobalFileStoreManager()
 export default fileStoreManager
