@@ -97,6 +97,13 @@ async function initializeApp(): Promise<void> {
 }
 
 /**
+ * Middleware to check if app is initialized
+ */
+export function isAppInitialized(): boolean {
+  return isInitialized
+}
+
+/**
  * Apply environment variable overrides to config
  */
 function applyEnvironmentOverrides(): void {

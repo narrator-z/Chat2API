@@ -43,6 +43,28 @@ export class ProxyServer {
     this.app = new Koa()
     this.router = new Router()
 
+    // Add initialization check middleware FIRST
+    this.app.use(async (ctx, next) => {
+      try {
+        const store = await getStore()
+        store.getConfig() // This will throw if not initialized
+        await next()
+      } catch (error: any) {
+        if (error?.message?.includes('not initialized')) {
+          ctx.status = 503
+          ctx.body = {
+            error: {
+              message: 'Service not ready, please try again later',
+              type: 'service_unavailable',
+              code: 'SERVICE_NOT_READY',
+            },
+          }
+          return
+        }
+        await next()
+      }
+    })
+
     this.setupMiddleware()
     this.setupRoutes()
     this.setupErrorHandler()
