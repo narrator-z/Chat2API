@@ -280,6 +280,12 @@ router.post('/completions', async (ctx: Context) => {
     // For streaming requests, we'll collect content and update the log later
     let logEntryId: string | undefined
 
+    // Debug: log request body and user input
+    const requestBodyStr = JSON.stringify(request)
+    console.log('[Chat] DEBUG addRequestLog - includeBodies config:', fileStoreManager.getConfig().requestLogConfig.includeBodies)
+    console.log('[Chat] DEBUG addRequestLog - requestBody length:', requestBodyStr.length)
+    console.log('[Chat] DEBUG addRequestLog - userInput:', userInput ? userInput.substring(0, 100) : 'undefined/null')
+
     if (!request.stream) {
       // Non-streaming: record log with response body now
       const logEntry = fileStoreManager.addRequestLog({
