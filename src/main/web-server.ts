@@ -34,10 +34,29 @@ if (!existsSync(DATA_DIR)) {
   mkdirSync(DATA_DIR, { recursive: true })
 }
 
+// Guard to prevent multiple initializations
+let isInitializing = false
+let isInitialized = false
+
 /**
  * Initialize application
  */
 async function initializeApp(): Promise<void> {
+  // Prevent multiple simultaneous initializations
+  if (isInitialized) {
+    console.log('[WebServer] Already initialized, skipping')
+    return
+  }
+  if (isInitializing) {
+    console.log('[WebServer] Initialization in progress, waiting...')
+    // Wait for existing initialization to complete
+    while (isInitializing) {
+      await new Promise(resolve => setTimeout(resolve, 100))
+    }
+    return
+  }
+  
+  isInitializing = true
   console.log('[WebServer] Initializing application...')
   console.log('[WebServer] Data directory:', DATA_DIR)
   console.log('[WebServer] API port:', API_PORT)
@@ -73,6 +92,8 @@ async function initializeApp(): Promise<void> {
   await startWebServer()
 
   console.log('[WebServer] Application started successfully')
+  isInitialized = true
+  isInitializing = false
 }
 
 /**
