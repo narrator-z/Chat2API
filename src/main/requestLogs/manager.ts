@@ -74,10 +74,17 @@ export class RequestLogManager {
   addRequestLog(entry: Omit<RequestLogEntry, 'id'>): RequestLogEntry {
     this.ensureInitialized()
 
+    console.log('[RequestLogManager] addRequestLog - this.config.includeBodies:', this.config.includeBodies)
+    console.log('[RequestLogManager] addRequestLog - entry.requestBody:', entry.requestBody ? entry.requestBody.substring(0, 100) : 'undefined/null')
+    console.log('[RequestLogManager] addRequestLog - entry.userInput:', entry.userInput ? entry.userInput.substring(0, 100) : 'undefined/null')
+
     const logEntry: RequestLogEntry = {
       ...sanitizeRequestLogEntry(entry, this.config),
       id: generateId(),
     }
+
+    console.log('[RequestLogManager] addRequestLog - logEntry.requestBody:', logEntry.requestBody ? logEntry.requestBody.substring(0, 100) : 'undefined/null')
+    console.log('[RequestLogManager] addRequestLog - logEntry.userInput:', logEntry.userInput ? logEntry.userInput.substring(0, 100) : 'undefined/null')
 
     if (!this.config.enabled) {
       return logEntry

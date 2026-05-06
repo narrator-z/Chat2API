@@ -202,6 +202,7 @@ class FileStoreManager {
 
   private async initializeRequestLogManager(): Promise<void> {
     const config = this.normalizeConfig(this.data?.config || DEFAULT_CONFIG)
+    console.log('[FileStore] initializeRequestLogManager - config.requestLogConfig.includeBodies:', config.requestLogConfig.includeBodies)
     this.requestLogManager = new RequestLogManager({
       storageDir: join(this.dataDir, 'request-logs'),
       config: config.requestLogConfig,
@@ -564,6 +565,11 @@ class FileStoreManager {
       ...updates,
     })
     this.saveData()
+
+    // Sync requestLogConfig to RequestLogManager if it was updated
+    if (updates.requestLogConfig && this.requestLogManager) {
+      this.requestLogManager.setConfig(this.data!.config.requestLogConfig)
+    }
   }
 
   // ==================== Log Operations ====================
