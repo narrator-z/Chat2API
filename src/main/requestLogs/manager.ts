@@ -108,10 +108,16 @@ export class RequestLogManager {
       return false
     }
 
+    const originalRequestBody = this.requestLogs[index].requestBody
+    console.log('[RequestLogManager] updateRequestLog - id:', id, 'updates keys:', Object.keys(updates))
+    console.log('[RequestLogManager] updateRequestLog - original requestBody exists:', !!originalRequestBody)
+
     this.requestLogs[index] = {
       ...this.requestLogs[index],
       ...sanitizeRequestLogUpdates(updates, this.config),
     }
+
+    console.log('[RequestLogManager] updateRequestLog - after update requestBody exists:', !!this.requestLogs[index].requestBody)
     this.schedulePersist()
     return true
   }

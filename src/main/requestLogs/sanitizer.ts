@@ -31,24 +31,38 @@ export function sanitizeRequestLogUpdates(
   updates: Partial<RequestLogEntry>,
   config: RequestLogConfig,
 ): Partial<RequestLogEntry> {
+  // Start with only the fields that were actually provided in updates
   const sanitized: Partial<RequestLogEntry> = {
-    ...updates,
-    userInput: truncateText(updates.userInput, 500),
+    userInput: updates.userInput !== undefined ? truncateText(updates.userInput, 500) : undefined,
     errorStack: undefined,
   }
 
   if (!config.includeBodies) {
-    sanitized.requestBody = undefined
-    sanitized.responseBody = undefined
-    sanitized.responsePreview = truncateText(updates.responsePreview, 1000)
-    sanitized.errorMessage = truncateText(updates.errorMessage, 1000)
+    // Only set requestBody/responseBody if they were in updates
+    if ('requestBody' in updates) {
+      sanitized.requestBody = undefined
+    }
+    if ('responseBody' in updates) {
+      sanitized.responseBody = undefined
+    }
+    sanitized.responsePreview = updates.responsePreview !== undefined ? truncateText(updates.responsePreview, 1000) : undefined
+    sanitized.errorMessage = updates.errorMessage !== undefined ? truncateText(updates.errorMessage, 1000) : undefined
     return sanitized
   }
 
-  sanitized.requestBody = sanitizeRequestLogBody(updates.requestBody, config)
-  sanitized.responseBody = sanitizeRequestLogBody(updates.responseBody, config)
-  sanitized.responsePreview = truncateText(updates.responsePreview, 1000)
-  sanitized.errorMessage = truncateText(updates.errorMessage, 1000)
+  // includeBodies is true - preserve existing body fields if not in updates
+  if ('requestBody' in updates) {
+    sanitized.requestBody = sanitizeRequestLogBody(updates.requestBody, config)
+  }
+  if ('responseBody' in updates) {
+    sanitized.responseBody = sanitizeRequestLogBody(updates.responseBody, config)
+  }
+  if ('responsePreview' in updates) {
+    sanitized.responsePreview = truncateText(updates.responsePreview, 1000)
+  }
+  if ('errorMessage' in updates) {
+    sanitized.errorMessage = truncateText(updates.errorMessage, 1000)
+  }
 
   return sanitized
 }
