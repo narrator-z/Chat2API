@@ -364,6 +364,7 @@ export class DeepSeekStreamHandler {
       let buffer = ''
 
       stream.on('data', (chunk: Buffer) => {
+        console.log('[DeepSeek] Non-stream received data, chunk size:', chunk.length)
         buffer += chunk.toString()
         const lines = buffer.split('\n')
         buffer = lines.pop() || ''
@@ -372,7 +373,12 @@ export class DeepSeekStreamHandler {
           if (!line.trim() || !line.startsWith('data:')) continue
 
           const data = line.slice(5).trim()
-          if (data === '[DONE]') return
+          if (data === '[DONE]') {
+            console.log('[DeepSeek] Non-stream received [DONE]')
+            return
+          }
+          
+          console.log('[DeepSeek] Non-stream received data line:', data.substring(0, 100))
 
           try {
             const parsed = JSON.parse(data)
@@ -470,6 +476,7 @@ export class DeepSeekStreamHandler {
       })
 
       stream.on('end', () => {
+        console.log('[DeepSeek] Non-stream stream ended')
         // Parse tool calls from accumulated content
         const { content: cleanContent, toolCalls } = parseToolCallsFromText(accumulatedContent)
 
