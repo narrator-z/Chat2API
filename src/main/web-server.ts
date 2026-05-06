@@ -103,7 +103,14 @@ async function startWebServer(): Promise<void> {
   const app = new Koa()
   
   // Serve static files from build directory
-  const buildPath = join(__dirname, '../renderer')
+  // When running via tsx (Docker), __dirname is src/main, so built files are at ../../out/renderer
+  // When running compiled (from out/main), files are at ../renderer
+  const candidatePaths = [
+    join(__dirname, '../../out/renderer'),  // tsx: src/main -> out/renderer
+    join(__dirname, '../renderer'),          // compiled: out/main -> out/renderer
+  ]
+  const buildPath = candidatePaths.find(p => existsSync(join(p, 'index.html'))) || candidatePaths[0]
+  console.log('[WebServer] Serving frontend from:', buildPath)
   app.use(serve(buildPath))
 
   // SPA fallback - serve index.html for all non-API routes
