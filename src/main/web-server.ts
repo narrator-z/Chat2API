@@ -108,25 +108,6 @@ async function applyEnvironmentOverrides(): Promise<void> {
 async function startWebServer(): Promise<void> {
   const app = new Koa()
 
-  // Mount management REST API
-  const webApi = createWebApiRouter()
-  // Add initialization guard as the first middleware
-  app.use(webApi.initGuard())
-  app.use(webApi.bodyParser())
-  app.use(webApi.routes())
-  app.use(webApi.allowedMethods())
-
-  // Serve static files from build directory
-  // When running via tsx (Docker), __dirname is src/main, so built files are at ../../out/renderer
-  // When running compiled (from out/main), files are at ../renderer
-  const candidatePaths = [
-    join(__dirname, '../../out/renderer'),  // tsx: src/main -> out/renderer
-    join(__dirname, '../renderer'),          // compiled: out/main -> out/renderer
-  ]
-  const buildPath = candidatePaths.find(p => existsSync(join(p, 'index.html'))) || candidatePaths[0]
-  console.log('[WebServer] Serving frontend from:', buildPath)
-  app.use(serve(buildPath))
-
   // Read web-api-bridge.js content to inject into HTML
   const bridgePaths = [
     join(__dirname, 'web-api-bridge.js'),           // compiled: out/main/
@@ -144,15 +125,30 @@ async function startWebServer(): Promise<void> {
     console.warn('[WebServer] web-api-bridge.js not found, window.electronAPI will be unavailable')
   }
 
-  // SPA fallback - serve index.html for all non-API routes
+  // Serve static files from build directory (but not index.html)
+  // When running via tsx (Docker), __dirname is src/main, so built files are at ../../out/renderer
+  // When running compiled (from out/main), files are at ../renderer
+  const candidatePaths = [
+    join(__dirname, '../../out/renderer'),  // tsx: src/main -> out/renderer
+    join(__dirname, '../renderer'),          // compiled: out/main -> out/renderer
+  ]
+  const buildPath = candidatePaths.find(p => existsSync(join(p, 'index.html'))) || candidatePaths[0]
+  console.log('[WebServer] Serving frontend from:', buildPath)
+
+  // SPA fallback - serve index.html with bridge injection for root path
+  // This MUST come before serve() to intercept root path requests
   app.use(async (ctx) => {
+    // Only handle the root path
+    if (ctx.path !== '/') return
+
+    // Skip API paths
     if (ctx.path.startsWith('/v1') || ctx.path.startsWith('/v0') || ctx.path.startsWith('/health') || ctx.path.startsWith('/stats')) {
       ctx.status = 404
       ctx.body = { error: 'Not found' }
       return
     }
 
-    // For all other routes, serve index.html with injected bridge script
+    // For root path, serve index.html with injected bridge script
     try {
       const { readFile } = await import('fs/promises')
       const indexPath = join(buildPath, 'index.html')
@@ -171,6 +167,17 @@ async function startWebServer(): Promise<void> {
       ctx.body = 'Frontend not built. Please run "npm run build" first.'
     }
   })
+
+  // Serve static files from build directory (after SPA fallback so root is handled)
+  app.use(serve(buildPath))
+
+  // Mount management REST API (after static files so API takes precedence for /manage/*)
+  const webApi = createWebApiRouter()
+  // Add initialization guard as the first middleware
+  app.use(webApi.initGuard())
+  app.use(webApi.bodyParser())
+  app.use(webApi.routes())
+  app.use(webApi.allowedMethods())
 
   return new Promise((resolve, reject) => {
     const server = app.listen(WEB_PORT, WEB_HOST, () => {
