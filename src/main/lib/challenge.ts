@@ -75,6 +75,10 @@ export class DeepSeekHash {
     difficulty: number,
     expireAt: number
   ): number | undefined {
+    if (!this.wasmInstance) {
+      throw new Error('WASM instance not initialized. Call init() first.')
+    }
+
     if (algorithm !== 'DeepSeekHashV1') {
       throw new Error('Unsupported algorithm: ' + algorithm)
     }
@@ -152,9 +156,19 @@ export async function getDeepSeekHash(): Promise<DeepSeekHash> {
       console.log('[DeepSeekHash] WASM initialized successfully')
     } catch (error) {
       console.error('[DeepSeekHash] WASM initialization failed:', error)
+      deepSeekHashInstance = null // Clear instance so it can be retried
       throw error
     }
   }
+  
+  // Verify WASM is actually initialized
+  const wasmInstance = (deepSeekHashInstance as any).wasmInstance
+  if (!wasmInstance) {
+    console.error('[DeepSeekHash] WASM instance is null, reinitializing...')
+    deepSeekHashInstance = null
+    return getDeepSeekHash() // Retry initialization
+  }
+  
   return deepSeekHashInstance
 }
 
