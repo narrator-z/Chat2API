@@ -135,20 +135,19 @@ async function startWebServer(): Promise<void> {
   const buildPath = candidatePaths.find(p => existsSync(join(p, 'index.html'))) || candidatePaths[0]
   console.log('[WebServer] Serving frontend from:', buildPath)
 
-  // SPA fallback - serve index.html with bridge injection for root path
-  // This MUST come before serve() to intercept root path requests
-  app.use(async (ctx) => {
-    // Only handle the root path
-    if (ctx.path !== '/') return
-
-    // Skip API paths
+  // SPA fallback - serve index.html with bridge injection for all non-API, non-assets paths
+  // This MUST come before serve('/assets') so root and SPA routes are handled
+  app.use(async (ctx, next) => {
+    // Skip API paths - let webApi handle them
+    if (ctx.path.startsWith('/manage')) return next()
+    // Skip static assets - let serve() handle them
+    if (ctx.path.startsWith('/assets')) return next()
+    // Skip health/stats/v1/v0 paths
     if (ctx.path.startsWith('/v1') || ctx.path.startsWith('/v0') || ctx.path.startsWith('/health') || ctx.path.startsWith('/stats')) {
-      ctx.status = 404
-      ctx.body = { error: 'Not found' }
-      return
+      return next()
     }
 
-    // For root path, serve index.html with injected bridge script
+    // For all other routes (including / and SPA routes like /providers), serve index.html with injected bridge script
     try {
       const { readFile } = await import('fs/promises')
       const indexPath = join(buildPath, 'index.html')
@@ -168,15 +167,9 @@ async function startWebServer(): Promise<void> {
     }
   })
 
-  // Serve static files from build directory (after SPA fallback so root is handled)
-  // Skip /manage/* paths to let webApi handle them
-  app.use(async (ctx, next) => {
-    if (ctx.path.startsWith('/manage')) {
-      return next()
-    }
-    await next()
-  })
-  app.use(serve(buildPath))
+  // Serve static files ONLY for /assets/* (after SPA fallback for root)
+  // This ensures /manage/* routes reach the API handler
+  app.use(serve(buildPath, { path: '/assets' }))
 
   // Mount management REST API (after static files so API takes precedence for /manage/*)
   const webApi = createWebApiRouter()
