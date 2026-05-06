@@ -169,6 +169,13 @@ async function startWebServer(): Promise<void> {
   })
 
   // Serve static files from build directory (after SPA fallback so root is handled)
+  // Skip /manage/* paths to let webApi handle them
+  app.use(async (ctx, next) => {
+    if (ctx.path.startsWith('/manage')) {
+      return next()
+    }
+    await next()
+  })
   app.use(serve(buildPath))
 
   // Mount management REST API (after static files so API takes precedence for /manage/*)
