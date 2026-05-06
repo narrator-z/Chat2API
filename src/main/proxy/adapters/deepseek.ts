@@ -420,6 +420,9 @@ ${message.content || ''}
       console.log('[DeepSeek] Reasoning mode enabled (from prompt)')
     }
 
+    console.log('[DeepSeek] Sending chat completion request, sessionId:', sessionId)
+    console.log('[DeepSeek] Request prompt:', prompt.substring(0, 100))
+    
     const response = await axios.post(
       `${DEEPSEEK_API_BASE}/v0/chat/completion`,
       {
@@ -443,6 +446,8 @@ ${message.content || ''}
       }
     )
 
+    console.log('[DeepSeek] Chat completion response status:', response.status)
+    
     return { response, sessionId }
   }
 
