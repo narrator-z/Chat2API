@@ -191,13 +191,6 @@ async function startWebServer(): Promise<void> {
   // This ensures /manage/* routes reach the API handler
   app.use(serve(buildPath, { path: '/assets' }))
 
-  // Debug middleware to trace request flow
-  app.use(async (ctx, next) => {
-    console.log('[Debug] Path:', ctx.path, 'Matched route will be:', ctx._matchedRoute || 'none')
-    await next()
-    console.log('[Debug] Response:', ctx.status, ctx.path)
-  })
-
   // Mount management REST API (after static files so API takes precedence for /manage/*)
   const webApi = createWebApiRouter()
   // Add initialization guard as the first middleware
