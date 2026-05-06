@@ -706,6 +706,16 @@ class FileStoreManager {
     return this.getRequestLogManagerOrThrow().getRequestLogTrend(days)
   }
 
+  addRequestLog(entry: Omit<RequestLogEntry, 'id'>): RequestLogEntry {
+    this.ensureInitialized()
+    return this.getRequestLogManagerOrThrow().addRequestLog(entry)
+  }
+
+  updateRequestLog(id: string, updates: Partial<RequestLogEntry>): boolean {
+    this.ensureInitialized()
+    return this.getRequestLogManagerOrThrow().updateRequestLog(id, updates)
+  }
+
   // ==================== System Prompt Operations ====================
 
   getSystemPrompts(): SystemPrompt[] {
