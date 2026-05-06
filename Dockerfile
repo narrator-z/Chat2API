@@ -65,6 +65,9 @@ COPY --from=frontend-builder /app/out/renderer ./out/renderer
 COPY src/main ./src/main
 COPY src/shared ./src/shared
 
+# Copy WASM files for SHA3 challenge calculation
+COPY sha3_wasm_bg.*.wasm ./
+
 # Create data directory
 RUN mkdir -p /app/data
 
