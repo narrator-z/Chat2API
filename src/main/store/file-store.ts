@@ -58,6 +58,13 @@ class FileStoreManager {
   }
 
   /**
+   * Check if storage is initialized
+   */
+  isInitialized(): boolean {
+    return this.isInitialized
+  }
+
+  /**
    * Check if storage has initialization error
    */
   hasInitializationError(): boolean {

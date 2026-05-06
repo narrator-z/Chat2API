@@ -19,6 +19,17 @@ import type { CredentialField } from './store/types'
 
 const router = new Router<DefaultState, DefaultContext>({ prefix: '/manage' })
 
+// Ensure fileStoreManager is initialized before handling any request
+// This is a safety net in case initialize() wasn't called yet
+async function ensureInitialized(ctx: any, next: any): Promise<void> {
+  if (!fileStoreManager.isInitialized()) {
+    console.warn('[WebAPI] fileStoreManager not initialized, initializing now...')
+    await fileStoreManager.initialize()
+    console.warn('[WebAPI] fileStoreManager initialized by request handler')
+  }
+  await next()
+}
+
 // Helper: wrap async handler and respond with JSON
 function jsonOk(ctx: any, data: unknown) {
   ctx.status = 200
@@ -921,5 +932,6 @@ export function createWebApiRouter() {
     routes: () => router.routes(),
     allowedMethods: () => router.allowedMethods(),
     bodyParser: () => bodyParser({ enableTypes: ['json'], jsonLimit: '10mb' }),
+    initGuard: () => ensureInitialized,
   }
 }

@@ -110,6 +110,8 @@ async function startWebServer(): Promise<void> {
 
   // Mount management REST API
   const webApi = createWebApiRouter()
+  // Add initialization guard as the first middleware
+  app.use(webApi.initGuard())
   app.use(webApi.bodyParser())
   app.use(webApi.routes())
   app.use(webApi.allowedMethods())
