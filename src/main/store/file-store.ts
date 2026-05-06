@@ -300,7 +300,7 @@ class FileStoreManager {
    * Ensure Storage is Initialized
    */
   private ensureInitialized(): void {
-    if (!this.isInitialized || !this.data) {
+    if (!this._isInitialized || !this.data) {
       const errorMsg = this.initializationError 
         ? `Storage initialization failed: ${this.initializationError.message}`
         : 'Storage not initialized, please call initialize() first'
@@ -350,7 +350,7 @@ class FileStoreManager {
   }
 
   private flushLogsSync(): void {
-    if (!this.isInitialized || !this.data || this.pendingLogs.length === 0) {
+    if (!this._isInitialized || !this.data || this.pendingLogs.length === 0) {
       return
     }
 
