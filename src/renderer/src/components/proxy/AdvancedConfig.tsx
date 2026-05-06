@@ -20,30 +20,39 @@ interface FormErrors {
 
 export function AdvancedConfig({ onConfigChange }: AdvancedConfigProps) {
   const { t } = useTranslation()
-  const { proxyConfig, setProxyConfig, saveAppConfig, isLoading } = useProxyStore()
+  const { proxyConfig, setProxyConfig, saveAppConfig, isLoading, fetchAppConfig } = useProxyStore()
   const { toast } = useToast()
   
+  // Safe accessor for timeout and retryCount with defaults
+  const timeoutValue = proxyConfig?.timeout ?? 60000
+  const retryCountValue = proxyConfig?.retryCount ?? 3
+  
   const initialFormDataRef = useRef({
-    timeout: (proxyConfig.timeout / 1000).toString(),
-    retryCount: proxyConfig.retryCount.toString(),
+    timeout: (timeoutValue / 1000).toString(),
+    retryCount: retryCountValue.toString(),
   })
 
   const [formData, setFormData] = useState({
-    timeout: (proxyConfig.timeout / 1000).toString(),
-    retryCount: proxyConfig.retryCount.toString(),
+    timeout: (timeoutValue / 1000).toString(),
+    retryCount: retryCountValue.toString(),
   })
   
   const [errors, setErrors] = useState<FormErrors>({})
   const [hasChanges, setHasChanges] = useState(false)
 
   useEffect(() => {
+    // Fetch config if not loaded
+    fetchAppConfig()
+  }, [])
+
+  useEffect(() => {
     const newFormData = {
-      timeout: (proxyConfig.timeout / 1000).toString(),
-      retryCount: proxyConfig.retryCount.toString(),
+      timeout: (timeoutValue / 1000).toString(),
+      retryCount: retryCountValue.toString(),
     }
     setFormData(newFormData)
     initialFormDataRef.current = newFormData
-  }, [])
+  }, [timeoutValue, retryCountValue])
 
   const validateTimeout = (value: string): string | undefined => {
     const timeout = parseInt(value, 10)

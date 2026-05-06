@@ -30,21 +30,27 @@ interface FormErrors {
 
 export function ProxyConfigForm({ onConfigChange }: ProxyConfigFormProps) {
   const { t } = useTranslation()
-  const { proxyConfig, proxyStatus, setProxyConfig, saveAppConfig, startProxy, stopProxy, isLoading } = useProxyStore()
+  const { proxyConfig, proxyStatus, setProxyConfig, saveAppConfig, startProxy, stopProxy, isLoading, fetchAppConfig } = useProxyStore()
   const { toast } = useToast()
   
+  // Safe accessor for proxyConfig properties with defaults
+  const portValue = proxyConfig?.port ?? 8080
+  const hostValue = proxyConfig?.host ?? '127.0.0.1'
+  const enableCorsValue = proxyConfig?.enableCors ?? true
+  const corsOriginValue = proxyConfig?.corsOrigin ?? '*'
+  
   const initialConfigRef = useRef({
-    port: proxyConfig.port.toString(),
-    host: proxyConfig.host,
-    enableCors: proxyConfig.enableCors,
-    corsOrigin: proxyConfig.corsOrigin,
+    port: portValue.toString(),
+    host: hostValue,
+    enableCors: enableCorsValue,
+    corsOrigin: corsOriginValue,
   })
   
   const [formData, setFormData] = useState({
-    port: proxyConfig.port.toString(),
-    host: proxyConfig.host,
-    enableCors: proxyConfig.enableCors,
-    corsOrigin: proxyConfig.corsOrigin,
+    port: portValue.toString(),
+    host: hostValue,
+    enableCors: enableCorsValue,
+    corsOrigin: corsOriginValue,
   })
   
   const [errors, setErrors] = useState<FormErrors>({})
@@ -53,15 +59,20 @@ export function ProxyConfigForm({ onConfigChange }: ProxyConfigFormProps) {
   const [isRestarting, setIsRestarting] = useState(false)
 
   useEffect(() => {
+    // Fetch config if not loaded
+    fetchAppConfig()
+  }, [])
+
+  useEffect(() => {
     const newFormData = {
-      port: proxyConfig.port.toString(),
-      host: proxyConfig.host,
-      enableCors: proxyConfig.enableCors,
-      corsOrigin: proxyConfig.corsOrigin,
+      port: portValue.toString(),
+      host: hostValue,
+      enableCors: enableCorsValue,
+      corsOrigin: corsOriginValue,
     }
     setFormData(newFormData)
     initialConfigRef.current = newFormData
-  }, [])
+  }, [portValue, hostValue, enableCorsValue, corsOriginValue])
 
   const validatePort = (value: string): string | undefined => {
     const port = parseInt(value, 10)
