@@ -1000,6 +1000,78 @@ class FileStoreManager {
     this.saveData()
   }
 
+  /**
+   * Record Request in Statistics
+   */
+  recordRequestInStats(
+    success: boolean,
+    latency: number,
+    model?: string,
+    providerId?: string,
+    accountId?: string
+  ): PersistentStatistics {
+    this.ensureInitialized()
+    const stats = this.data!.statistics || DEFAULT_STATISTICS
+    const today = new Date().toISOString().split('T')[0]
+
+    const newStats: PersistentStatistics = {
+      ...stats,
+      totalRequests: stats.totalRequests + 1,
+      successRequests: success ? stats.successRequests + 1 : stats.successRequests,
+      failedRequests: success ? stats.failedRequests : stats.failedRequests + 1,
+      totalLatency: success ? stats.totalLatency + latency : stats.totalLatency,
+      lastUpdated: Date.now(),
+      modelUsage: { ...stats.modelUsage },
+      providerUsage: { ...stats.providerUsage },
+      accountUsage: { ...stats.accountUsage },
+      dailyStats: { ...stats.dailyStats },
+    }
+
+    if (model) {
+      newStats.modelUsage[model] = (newStats.modelUsage[model] || 0) + 1
+    }
+
+    if (providerId) {
+      newStats.providerUsage[providerId] = (newStats.providerUsage[providerId] || 0) + 1
+    }
+
+    if (accountId) {
+      newStats.accountUsage[accountId] = (newStats.accountUsage[accountId] || 0) + 1
+    }
+
+    if (!newStats.dailyStats[today]) {
+      newStats.dailyStats[today] = {
+        date: today,
+        totalRequests: 0,
+        successRequests: 0,
+        failedRequests: 0,
+        totalLatency: 0,
+        modelUsage: {},
+        providerUsage: {},
+      }
+    }
+
+    newStats.dailyStats[today].totalRequests++
+    if (success) {
+      newStats.dailyStats[today].successRequests++
+      newStats.dailyStats[today].totalLatency += latency
+    } else {
+      newStats.dailyStats[today].failedRequests++
+    }
+
+    if (model) {
+      newStats.dailyStats[today].modelUsage[model] = (newStats.dailyStats[today].modelUsage[model] || 0) + 1
+    }
+
+    if (providerId) {
+      newStats.dailyStats[today].providerUsage[providerId] = (newStats.dailyStats[today].providerUsage[providerId] || 0) + 1
+    }
+
+    this.data!.statistics = newStats
+    this.saveData()
+    return newStats
+  }
+
   // ==================== User Model Overrides Operations ====================
 
   getUserModelOverrides(): UserModelOverrides {
