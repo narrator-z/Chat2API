@@ -128,10 +128,23 @@ let deepSeekHashInstance: DeepSeekHash | null = null
 export async function getDeepSeekHash(): Promise<DeepSeekHash> {
   if (!deepSeekHashInstance) {
     deepSeekHashInstance = new DeepSeekHash()
-    // Use different paths for development and production environments
-    const wasmPath = app.isPackaged
-      ? path.join(process.resourcesPath, 'sha3_wasm_bg.7b9ca65ddd.wasm')
-      : path.join(app.getAppPath(), 'sha3_wasm_bg.7b9ca65ddd.wasm')
+    
+    // Determine WASM path based on environment
+    let wasmPath: string
+    if (process.env.WEB_MODE === 'true') {
+      // Docker Web mode: use /app directory (where the WASM file is located)
+      wasmPath = path.join('/app', 'sha3_wasm_bg.7b9ca65ddd.wasm')
+    } else if (app?.isPackaged) {
+      // Packaged Electron app
+      wasmPath = path.join(process.resourcesPath, 'sha3_wasm_bg.7b9ca65ddd.wasm')
+    } else if (app) {
+      // Development Electron mode
+      wasmPath = path.join(app.getAppPath(), 'sha3_wasm_bg.7b9ca65ddd.wasm')
+    } else {
+      // Fallback: try /app directory
+      wasmPath = path.join('/app', 'sha3_wasm_bg.7b9ca65ddd.wasm')
+    }
+    
     console.log('[DeepSeekHash] WASM path:', wasmPath)
     console.log('[DeepSeekHash] File exists:', fs.existsSync(wasmPath))
     try {
