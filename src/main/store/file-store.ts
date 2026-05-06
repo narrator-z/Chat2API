@@ -772,6 +772,70 @@ class FileStoreManager {
     return this.data!.sessions || []
   }
 
+  /**
+   * Clean expired sessions
+   * Called periodically by SessionManager
+   */
+  cleanExpiredSessions(): number {
+    this.ensureInitialized()
+    const sessions = this.data!.sessions || []
+    const config = this.getConfig()
+    const timeoutMs = config.sessionConfig?.sessionTimeout * 60 * 1000 || 30 * 60 * 1000
+    const now = Date.now()
+
+    let removedCount = 0
+
+    // Always delete sessions that are already expired
+    let remainingSessions = sessions.filter((s: SessionRecord) => {
+      if (s.status === 'expired') {
+        removedCount++
+        return false
+      }
+      return true
+    })
+
+    // For timed-out active/idle sessions
+    const timedOutSessions = remainingSessions.filter((s: SessionRecord) => {
+      if (s.status === 'active' || s.status === 'idle') {
+        return now - s.updatedAt > timeoutMs
+      }
+      return false
+    })
+
+    if (timedOutSessions.length > 0) {
+      // Check deleteAfterTimeout config
+      const deleteAfterTimeout = config.sessionConfig?.deleteAfterTimeout ?? false
+      if (deleteAfterTimeout) {
+        // Delete timed out sessions
+        remainingSessions = remainingSessions.filter((s: SessionRecord) => {
+          if (s.status === 'active' || s.status === 'idle') {
+            return now - s.updatedAt <= timeoutMs
+          }
+          return true
+        })
+        removedCount += timedOutSessions.length
+      } else {
+        // Mark as expired instead of deleting
+        remainingSessions = remainingSessions.map((s: SessionRecord) => {
+          if (s.status === 'active' || s.status === 'idle') {
+            if (now - s.updatedAt > timeoutMs) {
+              return { ...s, status: 'expired' as const, updatedAt: now }
+            }
+          }
+          return s
+        })
+      }
+    }
+
+    if (removedCount > 0) {
+      this.data!.sessions = remainingSessions
+      this.saveData()
+      console.log('[FileStore] Cleaned expired sessions:', removedCount)
+    }
+
+    return removedCount
+  }
+
   getSessionById(id: string): SessionRecord | undefined {
     this.ensureInitialized()
     const sessions = this.data!.sessions || []

@@ -172,6 +172,19 @@
     get: () => get('/config'),
     update: (updates) => put('/config', updates).then(() => true),
     onConfigChanged: (callback) => () => {},
+  }
+
+  const managementApiAPI = {
+    getConfig: () => get('/management-api/config'),
+    updateConfig: (updates) => put('/management-api/config', updates),
+    generateSecret: () => post('/management-api/generate-secret'),
+  };
+
+  // managementApi invoke channels mapping
+  const managementApiInvoke = {
+    'managementApi:getConfig': () => managementApiAPI.getConfig(),
+    'managementApi:updateConfig': (updates) => managementApiAPI.updateConfig(updates),
+    'managementApi:generateSecret': () => managementApiAPI.generateSecret(),
   };
 
   const promptsAPI = {
@@ -196,12 +209,6 @@
     delete: (id) => del('/sessions/' + id),
     clearAll: () => del('/sessions/all'),
     cleanExpired: () => post('/sessions/clean-expired'),
-  };
-
-  const managementApiAPI = {
-    getConfig: () => get('/management-api/config'),
-    updateConfig: (updates) => put('/management-api/config', updates),
-    generateSecret: () => post('/management-api/generate-secret'),
   };
 
   const contextManagementAPI = {
@@ -235,7 +242,10 @@
     on: (channel, callback) => on(channel, callback),
     send: (channel, ...args) => {},
     invoke: async (channel, ...args) => {
-      // Fallback generic invoke - map common channels to REST
+      // Map common channels to REST API
+      if (channel in managementApiInvoke) {
+        return managementApiInvoke[channel](...args)
+      }
       console.warn('[WebBridge] Unhandled invoke:', channel, args);
       return undefined;
     },
