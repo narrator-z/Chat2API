@@ -873,11 +873,6 @@ class FileStoreManager {
     return sessions.filter((s: SessionRecord) => s.accountId === accountId)
   }
 
-  getSessions(): SessionRecord[] {
-    this.ensureInitialized()
-    return this.data!.sessions || []
-  }
-
   getActiveSessions(): SessionRecord[] {
     this.ensureInitialized()
     const sessions = this.data!.sessions || []
