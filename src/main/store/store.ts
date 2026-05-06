@@ -1775,8 +1775,37 @@ class StoreManager {
   }
 }
 
-// Export singleton instance
-export const storeManager = new StoreManager()
+// In web/Docker mode, storeManager delegates all calls to fileStoreManager.
+// web-server.ts calls setStoreDelegate(fileStoreManager) after initializing file-store.
+// The proxy checks the delegate at runtime (lazily), so it works regardless of
+// when WEB_MODE is set or when the delegate is injected.
 
-// Export types
-export type { StoreType }
+let _delegate: any = null
+
+export function setStoreDelegate(delegate: any): void {
+  _delegate = delegate
+}
+
+{
+  const _storeManagerInstance: any = new StoreManager()
+
+  // Always wrap with a Proxy; delegation happens when _delegate is set
+  let _wrappedInstance = new Proxy(_storeManagerInstance, {
+    get(target: any, prop: string | symbol) {
+      if (typeof prop === 'string' && _delegate && prop in _delegate) {
+        const val = (_delegate as any)[prop]
+        return typeof val === 'function' ? val.bind(_delegate) : val
+      }
+      const val = (target as any)[prop]
+      return typeof val === 'function' ? val.bind(target) : val
+    },
+  })
+
+  // Export the wrapped instance
+  ;(module as any).exports = { storeManager: _wrappedInstance, setStoreDelegate }
+  // Also export for TypeScript
+}
+
+// Export the wrapped instance as CJS module.exports (compatible with both CJS and ESM)
+// and as a named TypeScript export.
+export const storeManager: any = (module as any).exports.storeManager || (module as any).exports

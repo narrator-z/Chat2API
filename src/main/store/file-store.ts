@@ -442,21 +442,56 @@ class FileStoreManager {
 
   // ==================== Account Operations ====================
 
-  getAccounts(): Account[] {
-    this.ensureInitialized()
-    return this.data!.accounts || []
-  }
-
-  getAccountById(id: string): Account | undefined {
+  getAccounts(includeCredentials: boolean = false): Account[] {
     this.ensureInitialized()
     const accounts = this.data!.accounts || []
-    return accounts.find((a: Account) => a.id === id)
+    if (includeCredentials) {
+      return accounts.map((a: Account) => ({
+        ...a,
+        credentials: this.decryptCredentials(a.credentials),
+      }))
+    }
+    return accounts
   }
 
-  getAccountsByProviderId(providerId: string): Account[] {
+  getActiveAccounts(includeCredentials: boolean = false): Account[] {
     this.ensureInitialized()
     const accounts = this.data!.accounts || []
-    return accounts.filter((a: Account) => a.providerId === providerId)
+    const active = accounts.filter((a: Account) => a.status === 'active')
+    if (includeCredentials) {
+      return active.map((a: Account) => ({
+        ...a,
+        credentials: this.decryptCredentials(a.credentials),
+      }))
+    }
+    return active
+  }
+
+  generateId(): string {
+    return `${Date.now()}-${Math.random().toString(36).substring(2, 11)}`
+  }
+
+  getAccountById(id: string, includeCredentials: boolean = false): Account | undefined {
+    this.ensureInitialized()
+    const accounts = this.data!.accounts || []
+    const account = accounts.find((a: Account) => a.id === id)
+    if (account && includeCredentials) {
+      return { ...account, credentials: this.decryptCredentials(account.credentials) }
+    }
+    return account
+  }
+
+  getAccountsByProviderId(providerId: string, includeCredentials: boolean = false): Account[] {
+    this.ensureInitialized()
+    const accounts = this.data!.accounts || []
+    const filtered = accounts.filter((a: Account) => a.providerId === providerId)
+    if (includeCredentials) {
+      return filtered.map((a: Account) => ({
+        ...a,
+        credentials: this.decryptCredentials(a.credentials),
+      }))
+    }
+    return filtered
   }
 
   addAccount(account: Account): void {
@@ -520,9 +555,86 @@ class FileStoreManager {
 
   // ==================== Log Operations ====================
 
-  getLogs(): LogEntry[] {
+  getLogs(limit?: number, level?: LogLevel): LogEntry[] {
     this.ensureInitialized()
-    return this.getCombinedLogs()
+    let logs = this.getCombinedLogs()
+    if (level) {
+      logs = logs.filter((l: LogEntry) => l.level === level)
+    }
+    if (limit && limit > 0) {
+      logs = logs.slice(-limit)
+    }
+    return logs
+  }
+
+  getLogStats(): { total: number; info: number; warn: number; error: number; debug: number } {
+    this.ensureInitialized()
+    const logs = this.getCombinedLogs()
+    return {
+      total: logs.length,
+      info: logs.filter((l: LogEntry) => l.level === 'info').length,
+      warn: logs.filter((l: LogEntry) => l.level === 'warn').length,
+      error: logs.filter((l: LogEntry) => l.level === 'error').length,
+      debug: logs.filter((l: LogEntry) => l.level === 'debug').length,
+    }
+  }
+
+  getLogTrend(days: number = 7): { date: string; total: number; info: number; warn: number; error: number }[] {
+    this.ensureInitialized()
+    const logs = this.getCombinedLogs()
+    const now = Date.now()
+    const dayMs = 24 * 60 * 60 * 1000
+    const trends: { date: string; total: number; info: number; warn: number; error: number }[] = []
+    for (let i = days - 1; i >= 0; i--) {
+      const dayStart = now - (i + 1) * dayMs
+      const dayEnd = now - i * dayMs
+      const date = new Date(dayStart).toISOString().split('T')[0]
+      const dayLogs = logs.filter((l: LogEntry) => l.timestamp >= dayStart && l.timestamp < dayEnd)
+      trends.push({
+        date,
+        total: dayLogs.length,
+        info: dayLogs.filter((l: LogEntry) => l.level === 'info').length,
+        warn: dayLogs.filter((l: LogEntry) => l.level === 'warn').length,
+        error: dayLogs.filter((l: LogEntry) => l.level === 'error').length,
+      })
+    }
+    return trends
+  }
+
+  getAccountLogTrend(accountId: string, days: number = 7): { date: string; total: number; info: number; warn: number; error: number }[] {
+    this.ensureInitialized()
+    const logs = this.getCombinedLogs()
+    const accountLogs = logs.filter((l: LogEntry) => (l as any).accountId === accountId && (l as any).requestId)
+    const now = Date.now()
+    const dayMs = 24 * 60 * 60 * 1000
+    const trends: { date: string; total: number; info: number; warn: number; error: number }[] = []
+    for (let i = days - 1; i >= 0; i--) {
+      const dayStart = now - (i + 1) * dayMs
+      const dayEnd = now - i * dayMs
+      const date = new Date(dayStart).toISOString().split('T')[0]
+      const dayLogs = accountLogs.filter((l: LogEntry) => l.timestamp >= dayStart && l.timestamp < dayEnd)
+      const infoCount = dayLogs.filter((l: LogEntry) => l.level === 'info').length
+      const warnCount = dayLogs.filter((l: LogEntry) => l.level === 'warn').length
+      const errorCount = dayLogs.filter((l: LogEntry) => l.level === 'error').length
+      trends.push({ date, total: infoCount, info: infoCount, warn: warnCount, error: errorCount })
+    }
+    return trends
+  }
+
+  exportLogs(format: 'json' | 'txt' = 'json'): string {
+    this.ensureInitialized()
+    const logs = this.getCombinedLogs()
+    if (format === 'json') return JSON.stringify(logs, null, 2)
+    return logs.map((log: LogEntry) => {
+      const time = new Date(log.timestamp).toISOString()
+      const level = log.level.toUpperCase().padEnd(5)
+      return `[${time}] [${level}] ${log.message}`
+    }).join('\n')
+  }
+
+  getLogById(id: string): LogEntry | undefined {
+    this.ensureInitialized()
+    return this.getCombinedLogs().find((l: LogEntry) => l.id === id)
   }
 
   addLog(level: LogLevel, message: string, data?: any): void {
@@ -549,36 +661,86 @@ class FileStoreManager {
     this.saveData()
   }
 
+  // ==================== Request Log Operations ====================
+
+  private getRequestLogManagerOrThrow(): RequestLogManager {
+    if (!this.requestLogManager) throw new Error('RequestLogManager not initialized')
+    return this.requestLogManager
+  }
+
+  getRequestLogs(limit?: number, filter?: { status?: 'success' | 'error'; providerId?: string }): RequestLogEntry[] {
+    this.ensureInitialized()
+    return this.getRequestLogManagerOrThrow().getRequestLogs(limit, filter)
+  }
+
+  getRequestLogById(id: string): RequestLogEntry | undefined {
+    this.ensureInitialized()
+    return this.getRequestLogManagerOrThrow().getRequestLogById(id)
+  }
+
+  clearRequestLogs(): void {
+    this.ensureInitialized()
+    this.getRequestLogManagerOrThrow().clearRequestLogs()
+  }
+
+  getRequestLogStats(): { total: number; success: number; error: number; todayTotal: number; todaySuccess: number; todayError: number } {
+    this.ensureInitialized()
+    return this.getRequestLogManagerOrThrow().getRequestLogStats()
+  }
+
+  getRequestLogTrend(days: number = 7): { date: string; total: number; success: number; error: number; avgLatency: number }[] {
+    this.ensureInitialized()
+    return this.getRequestLogManagerOrThrow().getRequestLogTrend(days)
+  }
+
   // ==================== System Prompt Operations ====================
 
   getSystemPrompts(): SystemPrompt[] {
     this.ensureInitialized()
+    const customPrompts = this.data!.systemPrompts || []
+    return [...BUILTIN_PROMPTS, ...customPrompts]
+  }
+
+  getBuiltinPrompts(): SystemPrompt[] {
+    return BUILTIN_PROMPTS
+  }
+
+  getCustomPrompts(): SystemPrompt[] {
+    this.ensureInitialized()
     return this.data!.systemPrompts || []
   }
 
-  addSystemPrompt(prompt: SystemPrompt): void {
+  getSystemPromptById(id: string): SystemPrompt | undefined {
+    return this.getSystemPrompts().find(p => p.id === id)
+  }
+
+  getSystemPromptsByType(type: SystemPrompt['type']): SystemPrompt[] {
+    return this.getSystemPrompts().filter(p => p.type === type)
+  }
+
+  addSystemPrompt(prompt: Omit<SystemPrompt, 'id' | 'createdAt' | 'updatedAt'>): SystemPrompt {
     this.ensureInitialized()
     const prompts = this.data!.systemPrompts || []
-    prompts.push(prompt)
+    const newPrompt: SystemPrompt = {
+      ...prompt,
+      id: `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+      isBuiltin: false,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    } as SystemPrompt
+    prompts.push(newPrompt)
     this.data!.systemPrompts = prompts
     this.saveData()
+    return newPrompt
   }
 
   updateSystemPrompt(id: string, updates: Partial<SystemPrompt>): SystemPrompt | null {
     this.ensureInitialized()
+    if (BUILTIN_PROMPTS.some(p => p.id === id)) return null
     const prompts = this.data!.systemPrompts || []
     const index = prompts.findIndex((p: SystemPrompt) => p.id === id)
-    
-    if (index === -1) {
-      return null
-    }
-    
-    prompts[index] = {
-      ...prompts[index],
-      ...updates,
-      updatedAt: Date.now(),
-    }
-    
+    if (index === -1) return null
+    prompts[index] = { ...prompts[index], ...updates, updatedAt: Date.now() }
     this.data!.systemPrompts = prompts
     this.saveData()
     return prompts[index]
@@ -586,13 +748,10 @@ class FileStoreManager {
 
   deleteSystemPrompt(id: string): boolean {
     this.ensureInitialized()
+    if (BUILTIN_PROMPTS.some(p => p.id === id)) return false
     const prompts = this.data!.systemPrompts || []
     const index = prompts.findIndex((p: SystemPrompt) => p.id === id)
-    
-    if (index === -1) {
-      return false
-    }
-    
+    if (index === -1) return false
     prompts.splice(index, 1)
     this.data!.systemPrompts = prompts
     this.saveData()
@@ -662,6 +821,21 @@ class FileStoreManager {
     return this.data!.statistics || DEFAULT_STATISTICS
   }
 
+  getTodayStatistics(): DailyStatistics {
+    this.ensureInitialized()
+    const stats = this.data!.statistics || DEFAULT_STATISTICS
+    const today = new Date().toISOString().split('T')[0]
+    return stats.dailyStats?.[today] || {
+      date: today,
+      totalRequests: 0,
+      successRequests: 0,
+      failedRequests: 0,
+      totalLatency: 0,
+      modelUsage: {},
+      providerUsage: {},
+    }
+  }
+
   updateStatistics(updates: Partial<PersistentStatistics>): void {
     this.ensureInitialized()
     this.data!.statistics = {
@@ -685,6 +859,79 @@ class FileStoreManager {
       ...updates,
     } as UserModelOverrides
     this.saveData()
+  }
+
+  // ==================== Effective Models Operations ====================
+
+  private getProviderModelOverrides(providerId: string): ProviderModelOverrides {
+    const overrides = this.getUserModelOverrides()
+    return overrides[providerId] || { addedModels: [], excludedModels: [] }
+  }
+
+  getEffectiveModels(providerId: string): EffectiveModel[] {
+    this.ensureInitialized()
+    const provider = this.getProviderById(providerId)
+    if (!provider) return []
+    const defaultModels = provider.supportedModels || []
+    const modelMappings = provider.modelMappings || {}
+    const overrides = this.getProviderModelOverrides(providerId)
+    const effectiveModels: EffectiveModel[] = []
+    defaultModels.forEach(displayName => {
+      if (!overrides.excludedModels.includes(displayName)) {
+        effectiveModels.push({
+          displayName,
+          actualModelId: modelMappings[displayName] || displayName,
+          isCustom: false,
+        })
+      }
+    })
+    overrides.addedModels.forEach(customModel => {
+      effectiveModels.push({ ...customModel, isCustom: true })
+    })
+    return effectiveModels
+  }
+
+  addCustomModel(providerId: string, model: CustomModel): EffectiveModel[] {
+    this.ensureInitialized()
+    const overrides = this.getUserModelOverrides()
+    if (!overrides[providerId]) overrides[providerId] = { addedModels: [], excludedModels: [] }
+    const exists = overrides[providerId].addedModels.find(
+      m => m.displayName === model.displayName || m.actualModelId === model.actualModelId
+    )
+    if (exists) throw new Error(`Model "${model.displayName}" already exists`)
+    overrides[providerId].addedModels.push(model)
+    this.updateUserModelOverrides(overrides)
+    return this.getEffectiveModels(providerId)
+  }
+
+  removeModel(providerId: string, modelName: string): EffectiveModel[] {
+    this.ensureInitialized()
+    const provider = this.getProviderById(providerId)
+    if (!provider) throw new Error('Provider not found')
+    const overrides = this.getUserModelOverrides()
+    if (!overrides[providerId]) overrides[providerId] = { addedModels: [], excludedModels: [] }
+    const defaultModels = provider.supportedModels || []
+    if (defaultModels.includes(modelName)) {
+      if (!overrides[providerId].excludedModels.includes(modelName)) {
+        overrides[providerId].excludedModels.push(modelName)
+      }
+    } else {
+      overrides[providerId].addedModels = overrides[providerId].addedModels.filter(
+        m => m.displayName !== modelName
+      )
+    }
+    this.updateUserModelOverrides(overrides)
+    return this.getEffectiveModels(providerId)
+  }
+
+  resetModels(providerId: string): EffectiveModel[] {
+    this.ensureInitialized()
+    const overrides = this.getUserModelOverrides()
+    if (overrides[providerId]) {
+      delete overrides[providerId]
+      this.updateUserModelOverrides(overrides)
+    }
+    return this.getEffectiveModels(providerId)
   }
 
   // ==================== Store Operations ====================

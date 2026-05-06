@@ -5,13 +5,14 @@
  */
 
 import { join, dirname } from 'path'
-import { existsSync, mkdirSync } from 'fs'
+import { existsSync, mkdirSync, readFileSync } from 'fs'
 import { fileURLToPath } from 'url'
 import Koa from 'koa'
 import serve from 'koa-static'
 import { proxyServer } from './proxy/server'
-import { storeManager } from './store/store'
+import { storeManager, setStoreDelegate } from './store/store'
 import { proxyStatusManager } from './proxy/status'
+import { createWebApiRouter } from './web-api-routes'
 
 // Get __dirname equivalent in ESM
 const __filename = fileURLToPath(import.meta.url)
@@ -48,6 +49,11 @@ async function initializeApp(): Promise<void> {
     fileStoreManager.setDataDir(DATA_DIR)
     await fileStoreManager.initialize()
     console.log('[WebServer] Storage initialized successfully')
+
+    // Inject fileStoreManager as delegate for storeManager
+    // This makes all storeManager calls route to fileStoreManager in web mode
+    setStoreDelegate(fileStoreManager)
+    console.log('[WebServer] Store delegate injected')
   } catch (error) {
     console.error('[WebServer] Failed to initialize storage:', error)
     throw error
@@ -101,7 +107,13 @@ async function applyEnvironmentOverrides(): Promise<void> {
  */
 async function startWebServer(): Promise<void> {
   const app = new Koa()
-  
+
+  // Mount management REST API
+  const webApi = createWebApiRouter()
+  app.use(webApi.bodyParser())
+  app.use(webApi.routes())
+  app.use(webApi.allowedMethods())
+
   // Serve static files from build directory
   // When running via tsx (Docker), __dirname is src/main, so built files are at ../../out/renderer
   // When running compiled (from out/main), files are at ../renderer
@@ -113,6 +125,23 @@ async function startWebServer(): Promise<void> {
   console.log('[WebServer] Serving frontend from:', buildPath)
   app.use(serve(buildPath))
 
+  // Read web-api-bridge.js content to inject into HTML
+  const bridgePaths = [
+    join(__dirname, 'web-api-bridge.js'),           // compiled: out/main/
+    join(__dirname, '../../src/main/web-api-bridge.js'), // tsx: src/main/
+  ]
+  let bridgeScript = ''
+  for (const p of bridgePaths) {
+    if (existsSync(p)) {
+      bridgeScript = readFileSync(p, 'utf-8')
+      console.log('[WebServer] Loaded web-api-bridge from:', p)
+      break
+    }
+  }
+  if (!bridgeScript) {
+    console.warn('[WebServer] web-api-bridge.js not found, window.electronAPI will be unavailable')
+  }
+
   // SPA fallback - serve index.html for all non-API routes
   app.use(async (ctx) => {
     if (ctx.path.startsWith('/v1') || ctx.path.startsWith('/v0') || ctx.path.startsWith('/health') || ctx.path.startsWith('/stats')) {
@@ -120,12 +149,19 @@ async function startWebServer(): Promise<void> {
       ctx.body = { error: 'Not found' }
       return
     }
-    
-    // For all other routes, serve index.html
+
+    // For all other routes, serve index.html with injected bridge script
     try {
       const { readFile } = await import('fs/promises')
       const indexPath = join(buildPath, 'index.html')
-      const content = await readFile(indexPath, 'utf-8')
+      let content = await readFile(indexPath, 'utf-8')
+      // Inject bridge script before </head> so it runs before React mounts
+      if (bridgeScript) {
+        content = content.replace(
+          '</head>',
+          `<script>\n${bridgeScript}\n</script>\n</head>`
+        )
+      }
       ctx.type = 'text/html'
       ctx.body = content
     } catch (error) {
@@ -152,10 +188,10 @@ async function startWebServer(): Promise<void> {
  */
 async function shutdown(): Promise<void> {
   console.log('[WebServer] Shutting down...')
-  
+
   await proxyServer.stop()
   storeManager.flushPendingWrites()
-  
+
   console.log('[WebServer] Shutdown complete')
   process.exit(0)
 }
