@@ -14,12 +14,14 @@ import { storeManager } from '../store/store'
 import { sessionManager } from './sessionManager'
 import { fileStoreManager } from '../store/file-store'
 
-// Detect web mode
-const isWebMode = typeof process !== 'undefined' && process.env.WEB_MODE === 'true'
+// Detect web mode - check at runtime, not module load time
+function isWebMode() {
+  return typeof process !== 'undefined' && process.env.WEB_MODE === 'true'
+}
 
 // Helper function to get the correct store manager
 async function getStore() {
-  if (isWebMode) {
+  if (isWebMode()) {
     return fileStoreManager
   }
   return storeManager

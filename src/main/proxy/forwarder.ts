@@ -9,7 +9,7 @@ import { PassThrough } from 'stream'
 import { Account, Provider } from '../store/types'
 import { ForwardResult, ChatCompletionRequest, ProxyContext, ChatCompletionTool, ToolCall } from './types'
 import { proxyStatusManager } from './status'
-import { storeManager } from '../store/store'
+import { fileStoreManager } from '../store/file-store'
 import { DeepSeekAdapter } from './adapters/deepseek'
 import { DeepSeekStreamHandler } from './adapters/deepseek-stream'
 import { GLMAdapter, GLMStreamHandler } from './adapters/glm'
@@ -355,7 +355,7 @@ CRITICAL RULES:
     context: ProxyContext
   ): Promise<ForwardResult> {
     const startTime = Date.now()
-    const config = storeManager.getConfig()
+    const config = fileStoreManager.getConfig()
     const maxRetries = config.retryCount
 
     let lastError: string | undefined

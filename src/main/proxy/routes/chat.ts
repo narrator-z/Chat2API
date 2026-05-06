@@ -12,7 +12,7 @@ import { requestForwarder } from '../forwarder'
 import { streamHandler } from '../stream'
 import { proxyStatusManager } from '../status'
 import { modelMapper } from '../modelMapper'
-import { storeManager } from '../../store/store'
+import { fileStoreManager } from '../../store/file-store'
 import { 
   isAnthropicToolFormat,
   transformResponseToAnthropic,
@@ -139,7 +139,7 @@ router.post('/completions', async (ctx: Context) => {
     console.log('[Chat] Deep research enabled via X-Deep-Research header')
   }
 
-  const config = storeManager.getConfig()
+  const config = fileStoreManager.getConfig()
   const preferredProviderId = modelMapper.getPreferredProvider(request.model)
   const preferredAccountId = modelMapper.getPreferredAccount(request.model)
 
@@ -206,7 +206,7 @@ router.post('/completions', async (ctx: Context) => {
         },
       }
 
-      storeManager.addLog('error', `Request failed: ${result.error}`, {
+      fileStoreManager.addLog('error', `Request failed: ${result.error}`, {
         requestId,
         providerId: provider.id,
         accountId: account.id,
@@ -223,7 +223,7 @@ router.post('/completions', async (ctx: Context) => {
           code: null,
         },
       })
-      storeManager.addRequestLog({
+      fileStoreManager.addRequestLog({
         timestamp: startTime,
         status: 'error',
         statusCode: result.status || 500,
@@ -246,7 +246,7 @@ router.post('/completions', async (ctx: Context) => {
         errorMessage: result.error,
       })
 
-      storeManager.recordRequestInStats(false, latency, request.model, provider.id, account.id)
+      fileStoreManager.recordRequestInStats(false, latency, request.model, provider.id, account.id)
 
       return
     }
@@ -255,13 +255,13 @@ router.post('/completions', async (ctx: Context) => {
 
     proxyStatusManager.recordRequestSuccess(latency)
 
-    storeManager.updateAccount(account.id, {
+    fileStoreManager.updateAccount(account.id, {
       lastUsed: Date.now(),
       requestCount: (account.requestCount || 0) + 1,
       todayUsed: (account.todayUsed || 0) + 1,
     })
 
-    storeManager.addLog('debug', `Request succeeded`, {
+    fileStoreManager.addLog('debug', `Request succeeded`, {
       requestId,
       providerId: provider.id,
       accountId: account.id,
@@ -282,7 +282,7 @@ router.post('/completions', async (ctx: Context) => {
 
     if (!request.stream) {
       // Non-streaming: record log with response body now
-      const logEntry = storeManager.addRequestLog({
+      const logEntry = fileStoreManager.addRequestLog({
         timestamp: startTime,
         status: 'success',
         statusCode: 200,
@@ -306,7 +306,7 @@ router.post('/completions', async (ctx: Context) => {
       logEntryId = logEntry.id
     } else {
       // Streaming: record log now, will update response body later
-      const logEntry = storeManager.addRequestLog({
+      const logEntry = fileStoreManager.addRequestLog({
         timestamp: startTime,
         status: 'success',
         statusCode: 200,
@@ -329,7 +329,7 @@ router.post('/completions', async (ctx: Context) => {
       logEntryId = logEntry.id
     }
 
-    storeManager.recordRequestInStats(true, latency, request.model, provider.id, account.id)
+    fileStoreManager.recordRequestInStats(true, latency, request.model, provider.id, account.id)
 
     if (request.stream === true && result.stream) {
       ctx.set('Content-Type', 'text/event-stream')
@@ -366,7 +366,7 @@ router.post('/completions', async (ctx: Context) => {
         wrapperStream.write('data: [DONE]\n\n')
         wrapperStream.end()
 
-        storeManager.addLog('error', `Stream error: ${err.message}`, {
+        fileStoreManager.addLog('error', `Stream error: ${err.message}`, {
           requestId,
           providerId: provider.id,
           accountId: account.id,
@@ -387,7 +387,7 @@ router.post('/completions', async (ctx: Context) => {
         result.stream.once('end', () => {
           // Update log with collected response
           if (logEntryId) {
-            storeManager.updateRequestLog(logEntryId, {
+            fileStoreManager.updateRequestLog(logEntryId, {
               responseBody: collectedContent || undefined,
             })
           }
@@ -399,7 +399,7 @@ router.post('/completions', async (ctx: Context) => {
           actualModel,
           requestId,
           () => {
-            storeManager.addLog('debug', `Stream response completed`, { requestId })
+            fileStoreManager.addLog('debug', `Stream response completed`, { requestId })
           }
         )
 
@@ -414,7 +414,7 @@ router.post('/completions', async (ctx: Context) => {
         transformStream.once('end', () => {
           // Update log with collected response
           if (logEntryId) {
-            storeManager.updateRequestLog(logEntryId, {
+            fileStoreManager.updateRequestLog(logEntryId, {
               responseBody: collectedContent || undefined,
             })
           }
@@ -473,7 +473,7 @@ router.post('/completions', async (ctx: Context) => {
       },
     }
 
-    storeManager.addLog('error', `Request exception: ${errorMessage}`, {
+    fileStoreManager.addLog('error', `Request exception: ${errorMessage}`, {
       requestId,
       providerId: provider.id,
       accountId: account.id,
@@ -491,7 +491,7 @@ router.post('/completions', async (ctx: Context) => {
         code: null,
       },
     })
-    storeManager.addRequestLog({
+    fileStoreManager.addRequestLog({
       timestamp: startTime,
       status: 'error',
       statusCode: 500,
@@ -515,7 +515,7 @@ router.post('/completions', async (ctx: Context) => {
       errorStack,
     })
 
-    storeManager.recordRequestInStats(false, latency, request.model, provider.id, account.id)
+    fileStoreManager.recordRequestInStats(false, latency, request.model, provider.id, account.id)
   }
 })
 

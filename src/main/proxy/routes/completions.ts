@@ -10,7 +10,7 @@ import { requestForwarder } from '../forwarder'
 import { streamHandler } from '../stream'
 import { proxyStatusManager } from '../status'
 import { modelMapper } from '../modelMapper'
-import { storeManager } from '../../store/store'
+import { fileStoreManager } from '../../store/file-store'
 
 const router = new Router({ prefix: '/v1' })
 
@@ -92,7 +92,7 @@ router.post('/completions', async (ctx: Context) => {
     return
   }
 
-  const config = storeManager.getConfig()
+  const config = fileStoreManager.getConfig()
   const preferredProviderId = modelMapper.getPreferredProvider(request.model)
   const preferredAccountId = modelMapper.getPreferredAccount(request.model)
 
@@ -164,13 +164,13 @@ router.post('/completions', async (ctx: Context) => {
 
     proxyStatusManager.recordRequestSuccess(latency)
 
-    storeManager.updateAccount(account.id, {
+    fileStoreManager.updateAccount(account.id, {
       lastUsed: Date.now(),
       requestCount: (account.requestCount || 0) + 1,
       todayUsed: (account.todayUsed || 0) + 1,
     })
 
-    storeManager.addLog('debug', `Request succeeded`, {
+    fileStoreManager.addLog('debug', `Request succeeded`, {
       requestId,
       providerId: provider.id,
       accountId: account.id,

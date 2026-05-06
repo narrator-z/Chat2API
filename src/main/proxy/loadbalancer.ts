@@ -5,7 +5,7 @@
 
 import { Account, Provider, LoadBalanceStrategy } from '../store/types'
 import { AccountSelection } from './types'
-import { storeManager } from '../store/store'
+import { fileStoreManager } from '../store/file-store'
 
 /**
  * Load Balancer
@@ -94,7 +94,7 @@ export class LoadBalancer {
     preferredProviderId?: string,
     excludeFailed: boolean = false
   ): AccountSelection[] {
-    const providers = storeManager.getProviders().filter(p => p.enabled)
+    const providers = fileStoreManager.getProviders().filter(p => p.enabled)
     const candidates: AccountSelection[] = []
 
     for (const provider of providers) {
@@ -106,7 +106,7 @@ export class LoadBalancer {
         continue
       }
 
-      const accounts = storeManager.getAccountsByProviderId(provider.id, true)
+      const accounts = fileStoreManager.getAccountsByProviderId(provider.id, true)
         .filter(account => this.isAccountAvailable(account))
         .filter(account => !excludeFailed || !this.isAccountInFailure(account.id))
 
@@ -129,7 +129,7 @@ export class LoadBalancer {
    * Check if provider supports model
    */
   private providerSupportsModel(provider: Provider, model: string): boolean {
-    const effectiveModels = storeManager.getEffectiveModels(provider.id)
+    const effectiveModels = fileStoreManager.getEffectiveModels(provider.id)
     if (effectiveModels.length === 0) {
       return true
     }
@@ -147,7 +147,7 @@ export class LoadBalancer {
       return true
     }
 
-    const config = storeManager.getConfig()
+    const config = fileStoreManager.getConfig()
     const globalMapping = config.modelMappings[model]
     if (globalMapping) {
       if (globalMapping.preferredProviderId) {
@@ -199,7 +199,7 @@ export class LoadBalancer {
   private mapModel(model: string, provider: Provider): string {
     console.log(`[LoadBalancer] mapModel called with model="${model}", provider="${provider.name}"`)
     
-    const effectiveModels = storeManager.getEffectiveModels(provider.id)
+    const effectiveModels = fileStoreManager.getEffectiveModels(provider.id)
     const effectiveModel = effectiveModels.find(m => 
       m.displayName.toLowerCase() === model.toLowerCase()
     )
@@ -209,7 +209,7 @@ export class LoadBalancer {
       return effectiveModel.actualModelId
     }
 
-    const config = storeManager.getConfig()
+    const config = fileStoreManager.getConfig()
     const mapping = config.modelMappings[model]
 
     if (mapping && (!mapping.preferredProviderId || mapping.preferredProviderId === provider.id)) {
@@ -321,15 +321,15 @@ export class LoadBalancer {
    * Get all available models
    */
   getAvailableModels(): string[] {
-    const providers = storeManager.getProviders().filter(p => p.enabled)
+    const providers = fileStoreManager.getProviders().filter(p => p.enabled)
     const models = new Set<string>()
 
     for (const provider of providers) {
-      const accounts = storeManager.getAccountsByProviderId(provider.id)
+      const accounts = fileStoreManager.getAccountsByProviderId(provider.id)
         .filter(account => this.isAccountAvailable(account))
 
       if (accounts.length > 0) {
-        const effectiveModels = storeManager.getEffectiveModels(provider.id)
+        const effectiveModels = fileStoreManager.getEffectiveModels(provider.id)
         effectiveModels.forEach(m => models.add(m.displayName))
       }
     }

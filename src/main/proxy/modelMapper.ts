@@ -3,7 +3,7 @@
  * Supports mapping request models to actual models
  */
 
-import { storeManager } from '../store/store'
+import { fileStoreManager } from '../store/file-store'
 import { ModelMapping, Provider } from '../store/types'
 
 /**
@@ -16,7 +16,7 @@ export class ModelMapper {
    * @param provider Provider (optional, for provider-specific mapping)
    */
   mapModel(requestedModel: string, provider?: Provider): string {
-    const config = storeManager.getConfig()
+    const config = fileStoreManager.getConfig()
     const mappings = config.modelMappings
 
     const directMapping = mappings[requestedModel]
@@ -87,7 +87,7 @@ export class ModelMapper {
    * Get actual model name for a model
    */
   getActualModel(requestedModel: string, providerId?: string): string {
-    const config = storeManager.getConfig()
+    const config = fileStoreManager.getConfig()
     const mapping = config.modelMappings[requestedModel]
 
     if (mapping) {
@@ -103,7 +103,7 @@ export class ModelMapper {
    * Get preferred provider for a model
    */
   getPreferredProvider(requestedModel: string): string | undefined {
-    const config = storeManager.getConfig()
+    const config = fileStoreManager.getConfig()
     const mapping = config.modelMappings[requestedModel]
 
     return mapping?.preferredProviderId
@@ -113,7 +113,7 @@ export class ModelMapper {
    * Get preferred account for a model
    */
   getPreferredAccount(requestedModel: string): string | undefined {
-    const config = storeManager.getConfig()
+    const config = fileStoreManager.getConfig()
     const mapping = config.modelMappings[requestedModel]
 
     return mapping?.preferredAccountId
@@ -123,24 +123,24 @@ export class ModelMapper {
    * Add model mapping
    */
   addMapping(requestModel: string, actualModel: string, preferredProviderId?: string, preferredAccountId?: string): void {
-    const config = storeManager.getConfig()
+    const config = fileStoreManager.getConfig()
     config.modelMappings[requestModel] = {
       requestModel,
       actualModel,
       preferredProviderId,
       preferredAccountId,
     }
-    storeManager.getStore()?.set('config', config)
+    fileStoreManager.updateConfig({ modelMappings: config.modelMappings })
   }
 
   /**
    * Remove model mapping
    */
   removeMapping(requestModel: string): boolean {
-    const config = storeManager.getConfig()
+    const config = fileStoreManager.getConfig()
     if (config.modelMappings[requestModel]) {
       delete config.modelMappings[requestModel]
-      storeManager.getStore()?.set('config', config)
+      fileStoreManager.updateConfig({ modelMappings: config.modelMappings })
       return true
     }
     return false
@@ -150,7 +150,7 @@ export class ModelMapper {
    * Get all mappings
    */
   getAllMappings(): Record<string, ModelMapping> {
-    const config = storeManager.getConfig()
+    const config = fileStoreManager.getConfig()
     return { ...config.modelMappings }
   }
 
@@ -158,7 +158,7 @@ export class ModelMapper {
    * Get list of providers supporting specified model
    */
   getProvidersForModel(model: string): Provider[] {
-    const providers = storeManager.getProviders().filter(p => p.enabled)
+    const providers = fileStoreManager.getProviders().filter(p => p.enabled)
     const preferredProviderId = this.getPreferredProvider(model)
 
     if (preferredProviderId) {
@@ -169,7 +169,7 @@ export class ModelMapper {
     }
 
     return providers.filter(provider => {
-      const effectiveModels = storeManager.getEffectiveModels(provider.id)
+      const effectiveModels = fileStoreManager.getEffectiveModels(provider.id)
       if (effectiveModels.length === 0) {
         return true
       }

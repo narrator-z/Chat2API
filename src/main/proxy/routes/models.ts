@@ -7,7 +7,7 @@ import Router from '@koa/router'
 import type { Context } from 'koa'
 import { ModelsResponse, ModelInfo } from '../types'
 import { loadBalancer } from '../loadbalancer'
-import { storeManager } from '../../store/store'
+import { fileStoreManager } from '../../store/file-store'
 import { modelMapper } from '../modelMapper'
 
 const router = new Router({ prefix: '/v1' })
@@ -16,19 +16,19 @@ const router = new Router({ prefix: '/v1' })
  * Get all available models
  */
 router.get('/models', async (ctx: Context) => {
-  const providers = storeManager.getProviders().filter(p => p.enabled)
+  const providers = fileStoreManager.getProviders().filter(p => p.enabled)
   const models: ModelInfo[] = []
   const addedModels = new Set<string>()
 
   for (const provider of providers) {
-    const accounts = storeManager.getAccountsByProviderId(provider.id)
+    const accounts = fileStoreManager.getAccountsByProviderId(provider.id)
       .filter(account => account.status === 'active')
 
     if (accounts.length === 0) {
       continue
     }
 
-    const effectiveModels = storeManager.getEffectiveModels(provider.id)
+    const effectiveModels = fileStoreManager.getEffectiveModels(provider.id)
     for (const model of effectiveModels) {
       if (!addedModels.has(model.displayName)) {
         addedModels.add(model.displayName)
@@ -42,7 +42,7 @@ router.get('/models', async (ctx: Context) => {
     }
   }
 
-  const config = storeManager.getConfig()
+  const config = fileStoreManager.getConfig()
   const mappings = config.modelMappings || {}
   for (const [requestModel, mapping] of Object.entries(mappings)) {
     if (!addedModels.has(requestModel)) {
@@ -71,7 +71,7 @@ router.get('/models', async (ctx: Context) => {
 router.get('/models/:model', async (ctx: Context) => {
   const modelId = ctx.params.model
 
-  const config = storeManager.getConfig()
+  const config = fileStoreManager.getConfig()
   const mappings = config.modelMappings || {}
   if (mappings[modelId]) {
     ctx.set('Content-Type', 'application/json')
@@ -84,17 +84,17 @@ router.get('/models/:model', async (ctx: Context) => {
     return
   }
 
-  const providers = storeManager.getProviders().filter(p => p.enabled)
+  const providers = fileStoreManager.getProviders().filter(p => p.enabled)
 
   for (const provider of providers) {
-    const accounts = storeManager.getAccountsByProviderId(provider.id)
+    const accounts = fileStoreManager.getAccountsByProviderId(provider.id)
       .filter(account => account.status === 'active')
 
     if (accounts.length === 0) {
       continue
     }
 
-    const effectiveModels = storeManager.getEffectiveModels(provider.id)
+    const effectiveModels = fileStoreManager.getEffectiveModels(provider.id)
     const normalizedModelId = modelId.toLowerCase()
     const found = effectiveModels.some(m => {
       const normalizedSupported = m.displayName.toLowerCase()
