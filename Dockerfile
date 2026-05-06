@@ -66,7 +66,7 @@ COPY src/main ./src/main
 COPY src/shared ./src/shared
 
 # Copy WASM files for SHA3 challenge calculation
-COPY sha3_wasm_bg.*.wasm ./
+COPY sha3_wasm_bg.7b9ca65ddd.wasm ./
 
 # Create data directory
 RUN mkdir -p /app/data
