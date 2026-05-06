@@ -426,15 +426,19 @@ router.post('/completions', async (ctx: Context) => {
     } else {
       ctx.set('Content-Type', 'application/json')
 
+      console.log('[Chat] Non-stream response: result.body =', typeof result.body, result.body ? 'exists' : 'null/undefined')
+      
       if (result.body) {
         // Check if we need to transform to Anthropic format
         if (isAnthropicToolFormat(request.tool_format)) {
           ctx.body = transformResponseToAnthropic(result.body)
           console.log('[Chat] Transformed response to Anthropic tool format')
         } else {
+          console.log('[Chat] Setting result.body directly, keys:', Object.keys(result.body))
           ctx.body = result.body
         }
       } else {
+        console.log('[Chat] result.body is empty, using default response')
         ctx.body = {
           id: requestId,
           object: 'chat.completion',
@@ -458,10 +462,13 @@ router.post('/completions', async (ctx: Context) => {
     }
   } catch (error) {
     const latency = Date.now() - startTime
+    console.error('[Chat] ERROR in request handling:', error)
+    
     proxyStatusManager.recordRequestFailure(latency)
 
     const errorMessage = error instanceof Error ? error.message : 'Unknown error'
     const errorStack = error instanceof Error ? error.stack : undefined
+    console.error('[Chat] Error stack:', errorStack)
 
     ctx.status = 500
     ctx.body = {
@@ -472,15 +479,20 @@ router.post('/completions', async (ctx: Context) => {
         code: null,
       },
     }
+    console.log('[Chat] Set error response body')
 
-    fileStoreManager.addLog('error', `Request exception: ${errorMessage}`, {
-      requestId,
-      providerId: provider.id,
-      accountId: account.id,
-      model: request.model,
-      latency,
-      error: errorMessage,
-    })
+    try {
+      fileStoreManager.addLog('error', `Request exception: ${errorMessage}`, {
+        requestId,
+        providerId: provider.id,
+        accountId: account.id,
+        model: request.model,
+        latency,
+        error: errorMessage,
+      })
+    } catch (logError) {
+      console.error('[Chat] Failed to add log:', logError)
+    }
 
     const userInput = extractUserInput(request.messages)
     const exceptionResponseBody = JSON.stringify({
