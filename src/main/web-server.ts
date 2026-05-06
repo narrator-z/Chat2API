@@ -54,7 +54,7 @@ async function initializeApp(): Promise<void> {
   }
 
   // Apply environment variable overrides
-  applyEnvironmentOverrides()
+  await applyEnvironmentOverrides()
 
   // Start proxy server
   const proxyStarted = await proxyServer.start(API_PORT, API_HOST)
@@ -72,8 +72,9 @@ async function initializeApp(): Promise<void> {
 /**
  * Apply environment variable overrides to config
  */
-function applyEnvironmentOverrides(): void {
-  const config = storeManager.getConfig()
+async function applyEnvironmentOverrides(): Promise<void> {
+  const { fileStoreManager } = await import('./store/file-store')
+  const config = fileStoreManager.getConfig()
 
   if (process.env.ENABLE_API_KEY === 'true') {
     config.enableApiKey = true
@@ -91,7 +92,7 @@ function applyEnvironmentOverrides(): void {
     }
   }
 
-  storeManager.updateConfig(config)
+  fileStoreManager.updateConfig(config)
   console.log('[WebServer] Environment variable overrides applied')
 }
 
