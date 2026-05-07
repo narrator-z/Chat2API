@@ -67,7 +67,7 @@ interface ChatCompletionRequest {
 }
 
 const tokenCache = new Map<string, TokenInfo>()
-const sessionCache = new Map<string, { sessionId: string; createdAt: number }>()
+const sessionCache = new Map<string, { sessionId: string; createdAt: number; lastMessageId: string | null }>()
 
 function generateRandomString(length: number, charset: string = 'alphanumeric'): string {
   const sets = {
@@ -164,10 +164,14 @@ export class DeepSeekAdapter {
     return accessToken
   }
 
-  private async createSession(): Promise<string> {
+  private async createSession(parentMessageId?: string | null): Promise<string> {
     const cacheKey = this.account.id
     const cached = sessionCache.get(cacheKey)
     if (cached && Date.now() - cached.createdAt < 300000) {
+      // Update parent message ID if provided
+      if (parentMessageId) {
+        cached.lastMessageId = parentMessageId
+      }
       return cached.sessionId
     }
 
@@ -195,9 +199,23 @@ export class DeepSeekAdapter {
     }
 
     const sessionId = bizData?.chat_session?.id
-    sessionCache.set(cacheKey, { sessionId, createdAt: Date.now() })
+    sessionCache.set(cacheKey, { sessionId, createdAt: Date.now(), lastMessageId: null })
 
     return sessionId
+  }
+
+  /**
+   * Update the cached session's last message ID for multi-turn continuity.
+   * Called after a request completes to store the response message ID.
+   */
+  updateSessionMessageId(messageId: string): void {
+    const cacheKey = this.account.id
+    const cached = sessionCache.get(cacheKey)
+    if (cached) {
+      cached.lastMessageId = messageId
+      sessionCache.set(cacheKey, cached)
+      console.log('[DeepSeek] Updated session lastMessageId:', messageId)
+    }
   }
 
   async deleteSession(sessionId: string): Promise<boolean> {
@@ -372,10 +390,15 @@ ${message.content || ''}
 
   async chatCompletion(request: ChatCompletionRequest): Promise<{ response: AxiosResponse; sessionId: string }> {
     const token = await this.acquireToken()
-    
-    const sessionId = await this.createSession()
-    console.log('[DeepSeek] Created new session:', sessionId)
-    
+
+    // Get parent message ID from cached session for multi-turn continuity
+    const cacheKey = this.account.id
+    const cached = sessionCache.get(cacheKey)
+    const parentMessageId = cached?.lastMessageId || null
+
+    const sessionId = await this.createSession(parentMessageId)
+    console.log('[DeepSeek] Created new session:', sessionId, 'parentMessageId:', parentMessageId)
+
     const challenge = await this.getChallenge('/api/v0/chat/completion')
     const challengeAnswer = await this.calculateChallengeAnswer(challenge)
 
@@ -383,7 +406,8 @@ ${message.content || ''}
     // Note: Tool prompt injection is already handled by Forwarder.transformRequestForPromptToolUse()
     const messages = [...request.messages]
 
-    let prompt = this.messagesToPrompt(messages, false)
+    // Enable multi-turn mode: include full conversation history in prompt
+    let prompt = this.messagesToPrompt(messages, true)
 
     const { modelType, searchEnabled, thinkingEnabled } = resolveDeepSeekChatOptions(request, prompt)
 
@@ -402,7 +426,7 @@ ${message.content || ''}
       `${DEEPSEEK_API_BASE}/v0/chat/completion`,
       {
         chat_session_id: sessionId,
-        parent_message_id: null,
+        parent_message_id: parentMessageId,
         prompt,
         model_type: modelType,
         ref_file_ids: [],

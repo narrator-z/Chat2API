@@ -634,7 +634,15 @@ CRITICAL RULES:
       
       if (request.stream) {
         const transformedStream = await handler.handleStream(response.data)
-        
+
+        // After stream ends, update session cache with the new message ID for multi-turn continuity
+        transformedStream.on('end', () => {
+          const lastMsgId = handler.getLastMessageId()
+          if (lastMsgId) {
+            adapter.updateSessionMessageId(lastMsgId)
+          }
+        })
+
         return {
           success: true,
           status: response.status,
@@ -648,6 +656,12 @@ CRITICAL RULES:
 
       // Non-streaming requests need to collect stream data and convert
       const result = await handler.handleNonStream(response.data)
+
+      // Update session cache with the new message ID for multi-turn continuity
+      const lastMsgId = handler.getLastMessageId()
+      if (lastMsgId) {
+        adapter.updateSessionMessageId(lastMsgId)
+      }
       
       this.applyToolCallsToResponse(result, request.model, request.tools)
       
