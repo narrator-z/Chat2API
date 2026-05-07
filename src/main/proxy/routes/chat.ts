@@ -39,6 +39,12 @@ function getClientIP(ctx: Context): string {
 }
 
 /**
+ * Pattern to match OpenClaw untrusted metadata prefix
+ * Format: "Sender (untrusted metadata):\n```json\n{...}\n```\n\n"
+ */
+const OPENCLAW_METADATA_PATTERN = /^Sender \(untrusted metadata\):\s*```json\s*\{[\s\S]*?\}\s*```\s*\n\n?/
+
+/**
  * Extract user input from messages (last user message, full content)
  */
 function extractUserInput(messages: Array<{ role: string; content?: string | any[] | null }>): string | undefined {
@@ -63,6 +69,59 @@ function extractUserInput(messages: Array<{ role: string; content?: string | any
 }
 
 /**
+ * Clean OpenClaw untrusted metadata from content
+ * OpenClaw sends user messages with a metadata prefix that should be stripped
+ * Format: "Sender (untrusted metadata):\n```json\n{...}\n```\n\n<actual content>"
+ */
+function cleanOpenClawMetadata(content: string): string {
+  if (OPENCLAW_METADATA_PATTERN.test(content)) {
+    const cleaned = content.replace(OPENCLAW_METADATA_PATTERN, '')
+    console.log('[Chat] Stripped OpenClaw metadata prefix')
+    return cleaned
+  }
+  return content
+}
+
+/**
+ * Clean OpenClaw metadata from all user messages in the request
+ * Returns a new array with cleaned messages (does not modify original)
+ */
+function cleanRequestMessages(messages: Array<{ role: string; content?: string | any[] | null }>): Array<{ role: string; content?: string | any[] | null }> {
+  let cleaned = false
+  const result = messages.map((msg) => {
+    if (msg.role === 'user' && msg.content) {
+      if (typeof msg.content === 'string') {
+        const cleanedContent = cleanOpenClawMetadata(msg.content)
+        if (cleanedContent !== msg.content) {
+          cleaned = true
+          return { ...msg, content: cleanedContent }
+        }
+      } else if (Array.isArray(msg.content)) {
+        const hasChanges = msg.content.some((p: any) => p.type === 'text' && OPENCLAW_METADATA_PATTERN.test(p.text || ''))
+        if (hasChanges) {
+          cleaned = true
+          return {
+            ...msg,
+            content: msg.content.map((p: any) => {
+              if (p.type === 'text' && typeof p.text === 'string') {
+                return { ...p, text: cleanOpenClawMetadata(p.text) }
+              }
+              return p
+            }),
+          }
+        }
+      }
+    }
+    return msg
+  })
+
+  if (cleaned) {
+    console.log('[Chat] Request messages cleaned of OpenClaw metadata')
+  }
+  return result
+}
+
+/**
  * Handle Chat Completions Request
  */
 router.post('/completions', async (ctx: Context) => {
@@ -84,6 +143,11 @@ router.post('/completions', async (ctx: Context) => {
       },
     }
     return
+  }
+
+  // Clean OpenClaw metadata from user messages before processing
+  if (request.messages) {
+    request.messages = cleanRequestMessages(request.messages) as any
   }
 
   if (!request.model) {
