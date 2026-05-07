@@ -1,5 +1,5 @@
 /**
- * Kimi K2.5 Adapter
+ * Kimi K2.6 Adapter
  * Implements Kimi web API protocol with thinking mode and web search support
  */
 
@@ -15,6 +15,7 @@ import {
   createBaseChunk,
   ToolCallState 
 } from '../utils/streamToolHandler'
+import { createKimiChatPayload, encodeKimiGrpcFrame } from './providerModelOptions'
 
 const KIMI_API_BASE = 'https://www.kimi.com'
 
@@ -318,32 +319,15 @@ export class KimiAdapter {
       console.log('[Kimi] Web search enabled (from model name)')
     }
 
-    const jsonBody = JSON.stringify({
-      scenario: 'SCENARIO_K2D5',
-      chat_id: '',
-      tools: enableWebSearch ? [{ type: 'TOOL_TYPE_SEARCH', search: {} }] : [],
-      message: {
-        parent_id: '',
-        role: 'user',
-        blocks: [{
-          message_id: '',
-          text: { content }
-        }],
-        scenario: 'SCENARIO_K2D5'
-      },
-      options: {
-        thinking: enableThinking
-      }
+    const payload = createKimiChatPayload({
+      model: request.model,
+      content,
+      enableWebSearch,
+      enableThinking,
     })
+    const frameBuffer = encodeKimiGrpcFrame(payload)
 
-    // gRPC-Web frame format: 1 byte flag (0x00) + 4 bytes length (big-endian) + JSON payload
-    const jsonBuffer = Buffer.from(jsonBody, 'utf8')
-    const frameBuffer = Buffer.alloc(5 + jsonBuffer.length)
-    frameBuffer.writeUInt8(0, 0) // flag = 0
-    frameBuffer.writeUInt32BE(jsonBuffer.length, 1) // length
-    jsonBuffer.copy(frameBuffer, 5)
-
-    console.log('[Kimi] Request body length:', frameBuffer.length, 'JSON length:', jsonBuffer.length)
+    console.log('[Kimi] Request body length:', frameBuffer.length, 'JSON length:', frameBuffer.length - 5)
 
     const response = await axios.post(
       `${KIMI_API_BASE}/apiv2/kimi.gateway.chat.v1.ChatService/Chat`,
