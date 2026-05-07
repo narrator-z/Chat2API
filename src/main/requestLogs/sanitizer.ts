@@ -30,10 +30,14 @@ export function sanitizeRequestLogEntry(
 export function sanitizeRequestLogUpdates(
   updates: Partial<RequestLogEntry>,
   config: RequestLogConfig,
+  originalEntry?: Partial<RequestLogEntry>,
 ): Partial<RequestLogEntry> {
-  // Start with only the fields that were actually provided in updates
+  // Only include fields that were explicitly provided in updates.
+  // For fields not in updates, preserve from originalEntry if provided, otherwise undefined.
   const sanitized: Partial<RequestLogEntry> = {
-    userInput: updates.userInput !== undefined ? truncateText(updates.userInput, 500) : undefined,
+    userInput: 'userInput' in updates
+      ? (updates.userInput !== undefined ? truncateText(updates.userInput, 500) : undefined)
+      : (originalEntry?.userInput ?? undefined),
     errorStack: undefined,
   }
 

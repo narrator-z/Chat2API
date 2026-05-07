@@ -112,9 +112,10 @@ export class RequestLogManager {
     console.log('[RequestLogManager] updateRequestLog - id:', id, 'updates keys:', Object.keys(updates))
     console.log('[RequestLogManager] updateRequestLog - original requestBody exists:', !!originalRequestBody)
 
+    const original = this.requestLogs[index]
     this.requestLogs[index] = {
-      ...this.requestLogs[index],
-      ...sanitizeRequestLogUpdates(updates, this.config),
+      ...original,
+      ...sanitizeRequestLogUpdates(updates, this.config, original),
     }
 
     console.log('[RequestLogManager] updateRequestLog - after update requestBody exists:', !!this.requestLogs[index].requestBody)
