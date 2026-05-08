@@ -40,9 +40,10 @@ function getClientIP(ctx: Context): string {
 
 /**
  * Pattern to match OpenClaw untrusted metadata prefix
- * Format: "Sender (untrusted metadata):\n```json\n{...}\n```\n\n"
+ * Format: "Sender (untrusted metadata):\n```json\n{...}\n```\n\n<actual content>"
+ * or: "Sender (untrusted metadata):\n```json\n{...}\n```" (no trailing newline)
  */
-const OPENCLAW_METADATA_PATTERN = /^Sender \(untrusted metadata\):\s*```json\s*\{[\s\S]*?\}\s*```\s*\n\n?/
+const OPENCLAW_METADATA_PATTERN = /^Sender \(untrusted metadata\):\r?\n```json\r?\n[\s\S]*?```\r?\n?\r?\n?/
 
 /**
  * Extract user input from messages (last user message, full content)

@@ -53,6 +53,9 @@ import {
   UserModelOverrides,
   CustomModel,
   DEFAULT_REQUEST_LOG_CONFIG,
+  ToolRegistryEntry,
+  ToolRegistryConfig,
+  DEFAULT_TOOL_REGISTRY_CONFIG,
 } from './types'
 import { BUILTIN_PROMPTS } from '../data/builtin-prompts'
 import { RequestLogManager } from '../requestLogs/manager'
@@ -215,6 +218,7 @@ class StoreManager {
       sessions: [],
       statistics: DEFAULT_STATISTICS,
       userModelOverrides: DEFAULT_USER_MODEL_OVERRIDES,
+      toolRegistry: [],
     }
   }
 
@@ -1697,6 +1701,135 @@ class StoreManager {
     return this.getEffectiveModels(providerId)
   }
 
+  // ==================== Tool Registry Operations ====================
+
+  /**
+   * Get all tool registry entries
+   */
+  getToolRegistryEntries(): ToolRegistryEntry[] {
+    this.ensureInitialized()
+    return this.store!.get('toolRegistry') || []
+  }
+
+  /**
+   * Get a tool registry entry by name
+   */
+  getToolRegistryEntry(name: string): ToolRegistryEntry | undefined {
+    const tools = this.getToolRegistryEntries()
+    return tools.find(t => t.name.toLowerCase() === name.toLowerCase())
+  }
+
+  /**
+   * Add a tool registry entry
+   */
+  addToolRegistryEntry(entry: Omit<ToolRegistryEntry, 'id' | 'createdAt' | 'updatedAt'>): ToolRegistryEntry {
+    this.ensureInitialized()
+    const tools = this.getToolRegistryEntries()
+    
+    const existing = tools.findIndex(t => t.name.toLowerCase() === entry.name.toLowerCase())
+    if (existing !== -1) {
+      throw new Error(`Tool "${entry.name}" already exists`)
+    }
+
+    const now = Date.now()
+    const newEntry: ToolRegistryEntry = {
+      ...entry,
+      id: `${now}-${Math.random().toString(36).substring(2, 9)}`,
+      createdAt: now,
+      updatedAt: now,
+    }
+    
+    tools.push(newEntry)
+    this.store!.set('toolRegistry', tools)
+    return newEntry
+  }
+
+  /**
+   * Update a tool registry entry
+   */
+  updateToolRegistryEntry(name: string, updates: Partial<ToolRegistryEntry>): ToolRegistryEntry | null {
+    this.ensureInitialized()
+    const tools = this.getToolRegistryEntries()
+    const index = tools.findIndex(t => t.name.toLowerCase() === name.toLowerCase())
+    
+    if (index === -1) return null
+    
+    tools[index] = {
+      ...tools[index],
+      ...updates,
+      name: updates.name || tools[index].name,
+      updatedAt: Date.now(),
+    }
+    
+    this.store!.set('toolRegistry', tools)
+    return tools[index]
+  }
+
+  /**
+   * Delete a tool registry entry
+   */
+  deleteToolRegistryEntry(name: string): boolean {
+    this.ensureInitialized()
+    const tools = this.getToolRegistryEntries()
+    const index = tools.findIndex(t => t.name.toLowerCase() === name.toLowerCase())
+    
+    if (index === -1) return false
+    
+    tools.splice(index, 1)
+    this.store!.set('toolRegistry', tools)
+    return true
+  }
+
+  /**
+   * Bulk add tool registry entries
+   */
+  bulkAddToolRegistryEntries(entries: Omit<ToolRegistryEntry, 'id' | 'createdAt' | 'updatedAt'>[]): { success: number; failed: number; errors: string[] } {
+    this.ensureInitialized()
+    let success = 0
+    let failed = 0
+    const errors: string[] = []
+
+    for (const entry of entries) {
+      try {
+        this.addToolRegistryEntry(entry)
+        success++
+      } catch (err) {
+        errors.push(`${entry.name}: ${err instanceof Error ? err.message : 'Unknown error'}`)
+        failed++
+      }
+    }
+
+    return { success, failed, errors }
+  }
+
+  /**
+   * Get tool registry config
+   */
+  getToolRegistryConfig(): ToolRegistryConfig {
+    this.ensureInitialized()
+    const config = this.getConfig()
+    return config.toolRegistry || DEFAULT_TOOL_REGISTRY_CONFIG
+  }
+
+  /**
+   * Update tool registry config
+   */
+  updateToolRegistryConfig(updates: Partial<ToolRegistryConfig>): ToolRegistryConfig {
+    this.ensureInitialized()
+    const currentConfig = this.getToolRegistryConfig()
+    const newConfig = { ...currentConfig, ...updates }
+    this.updateConfig({ toolRegistry: newConfig })
+    return newConfig
+  }
+
+  /**
+   * Clear all tool registry entries
+   */
+  clearToolRegistry(): void {
+    this.ensureInitialized()
+    this.store!.set('toolRegistry', [])
+  }
+
   // ==================== Utility Methods ====================
 
   /**
@@ -1746,6 +1879,7 @@ class StoreManager {
     const sessions = this.store!.get('sessions') || []
     const statistics = this.store!.get('statistics') || DEFAULT_STATISTICS
     const userModelOverrides = this.store!.get('userModelOverrides') || DEFAULT_USER_MODEL_OVERRIDES
+    const toolRegistry = this.store!.get('toolRegistry') || []
     
     return {
       providers,
@@ -1757,6 +1891,7 @@ class StoreManager {
       sessions,
       statistics,
       userModelOverrides,
+      toolRegistry,
     }
   }
 

@@ -14,6 +14,7 @@ export type ClientType =
   | 'kilocode'
   | 'codexCli'
   | 'vscodeAgent'
+  | 'openclaw'
   | 'unknown'
 
 /**
@@ -133,6 +134,16 @@ export const CLIENT_SIGNATURES: Record<ClientType, ClientSignatureConfig> = {
     ],
     toolCallFormat: 'native',
     injectsPrompt: true,
+  },
+  openclaw: {
+    id: 'openclaw',
+    name: 'OpenClaw',
+    detectPatterns: [
+      'running inside OpenClaw',
+      'openclaw gateway',
+    ],
+    toolCallFormat: 'bracket',
+    injectsPrompt: false,
   },
   unknown: {
     id: 'unknown',

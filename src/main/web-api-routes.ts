@@ -14,6 +14,7 @@ import { proxyServer } from './proxy/server'
 import { proxyStatusManager } from './proxy/status'
 import { sessionManager } from './proxy/sessionManager'
 import { generateManagementSecret } from './proxy/middleware/managementAuth'
+import { toolRegistry } from './proxy/services/toolRegistry'
 import type { Provider, AuthType, Account } from './store/types'
 import type { CredentialField } from './store/types'
 
@@ -927,6 +928,150 @@ router.post('/providers/import', async (ctx) => {
   }
 })
 
+// ==================== Tool Registry ====================
+
+const toolsRouter = new Router<DefaultState, DefaultContext>({ prefix: '/manage/tools' })
+
+// GET /manage/tools - List all tools
+toolsRouter.get('/', async (ctx) => {
+  try {
+    const tools = toolRegistry.getAllTools()
+    jsonOk(ctx, {
+      tools,
+      count: tools.length,
+      config: toolRegistry.getConfig(),
+    })
+  } catch (e: any) {
+    jsonError(ctx, e?.message || 'Failed to get tools')
+  }
+})
+
+// GET /manage/tools/config - Get tool registry config
+toolsRouter.get('/config', async (ctx) => {
+  try {
+    const config = toolRegistry.getConfig()
+    jsonOk(ctx, config)
+  } catch (e: any) {
+    jsonError(ctx, e?.message || 'Failed to get config')
+  }
+})
+
+// PUT /manage/tools/config - Update tool registry config
+toolsRouter.put('/config', async (ctx) => {
+  try {
+    const updates = ctx.request.body as any
+    toolRegistry.updateConfig(updates)
+    jsonOk(ctx, toolRegistry.getConfig())
+  } catch (e: any) {
+    jsonError(ctx, e?.message || 'Failed to update config')
+  }
+})
+
+// GET /manage/tools/:name - Get specific tool
+toolsRouter.get('/:name', async (ctx) => {
+  try {
+    const tool = toolRegistry.getTool(ctx.params.name)
+    if (!tool) {
+      return jsonError(ctx, 'Tool not found', 404)
+    }
+    jsonOk(ctx, tool)
+  } catch (e: any) {
+    jsonError(ctx, e?.message || 'Failed to get tool')
+  }
+})
+
+// POST /manage/tools - Add a new tool
+toolsRouter.post('/', async (ctx) => {
+  try {
+    const data = ctx.request.body as any
+    if (!data.name || !data.definition) {
+      return jsonError(ctx, 'Tool name and definition are required')
+    }
+    
+    const entry = {
+      id: data.id || `${data.name}_${Date.now()}`,
+      name: data.name,
+      provider: data.provider || 'manual',
+      definition: data.definition,
+      enabled: data.enabled !== false,
+      tags: data.tags || [],
+      createdAt: data.createdAt || Date.now(),
+      updatedAt: Date.now(),
+    }
+    
+    toolRegistry.setTool(entry)
+    fileStoreManager.addToolRegistryEntry(entry)
+    jsonOk(ctx, entry)
+  } catch (e: any) {
+    jsonError(ctx, e?.message || 'Failed to add tool')
+  }
+})
+
+// POST /manage/tools/bulk - Bulk add tools
+toolsRouter.post('/bulk', async (ctx) => {
+  try {
+    const data = ctx.request.body as any
+    if (!Array.isArray(data.tools)) {
+      return jsonError(ctx, 'tools array is required')
+    }
+    
+    const result = toolRegistry.importTools(data.tools)
+    
+    // Save to store
+    for (const tool of result.success > 0 ? data.tools.slice(0, result.success) : []) {
+      fileStoreManager.addToolRegistryEntry({
+        id: tool.id || `${tool.name}_${Date.now()}`,
+        name: tool.name,
+        provider: tool.provider || 'bulk',
+        definition: tool.definition,
+        enabled: tool.enabled !== false,
+        tags: tool.tags || [],
+        createdAt: tool.createdAt || Date.now(),
+        updatedAt: Date.now(),
+      })
+    }
+    
+    jsonOk(ctx, result)
+  } catch (e: any) {
+    jsonError(ctx, e?.message || 'Failed to bulk add tools')
+  }
+})
+
+// PUT /manage/tools/:name - Update a tool
+toolsRouter.put('/:name', async (ctx) => {
+  try {
+    const existing = toolRegistry.getTool(ctx.params.name)
+    if (!existing) {
+      return jsonError(ctx, 'Tool not found', 404)
+    }
+    
+    const updates = ctx.request.body as any
+    const updated = {
+      ...existing,
+      ...updates,
+      updatedAt: Date.now(),
+    }
+    
+    toolRegistry.setTool(updated)
+    jsonOk(ctx, updated)
+  } catch (e: any) {
+    jsonError(ctx, e?.message || 'Failed to update tool')
+  }
+})
+
+// DELETE /manage/tools/:name - Delete a tool
+toolsRouter.delete('/:name', async (ctx) => {
+  try {
+    const deleted = toolRegistry.removeTool(ctx.params.name)
+    if (!deleted) {
+      return jsonError(ctx, 'Tool not found', 404)
+    }
+    jsonOk(ctx, true)
+  } catch (e: any) {
+    jsonError(ctx, e?.message || 'Failed to delete tool')
+  }
+})
+
 export function createWebApiRouter() {
   return {
     routes: () => router.routes(),
@@ -935,3 +1080,6 @@ export function createWebApiRouter() {
     initGuard: () => ensureInitialized,
   }
 }
+
+// Export tools router for use in proxy server
+export { toolsRouter }

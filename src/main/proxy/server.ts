@@ -13,6 +13,7 @@ import { proxyStatusManager } from './status'
 import { storeManager } from '../store/store'
 import { sessionManager } from './sessionManager'
 import { fileStoreManager } from '../store/file-store'
+import { toolRegistry } from './services/toolRegistry'
 
 // Detect web mode - check at runtime, not module load time
 function isWebMode() {
@@ -329,6 +330,9 @@ export class ProxyServer {
     this.host = host || proxyStatusManager.getHost()
     
     sessionManager.initialize()
+    
+    // Initialize tool registry from stored tools
+    this.initializeToolRegistry()
 
     return new Promise((resolve) => {
       try {
@@ -372,6 +376,26 @@ export class ProxyServer {
         resolve(false)
       }
     })
+  }
+
+  /**
+   * Initialize tool registry from stored tools
+   */
+  private async initializeToolRegistry(): Promise<void> {
+    try {
+      const store = await getStore()
+      
+      // Get stored tool registry entries
+      const entries = store.getToolRegistryEntries()
+      const config = store.getToolRegistryConfig()
+      
+      // Initialize the tool registry service
+      await toolRegistry.initialize(entries, config)
+      
+      console.log(`[ProxyServer] Tool registry initialized with ${entries.length} tools`)
+    } catch (error) {
+      console.error('[ProxyServer] Failed to initialize tool registry:', error)
+    }
   }
 
   /**

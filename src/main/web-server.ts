@@ -12,7 +12,7 @@ import serve from 'koa-static'
 import { proxyServer } from './proxy/server'
 import { storeManager, setStoreDelegate } from './store/store'
 import { proxyStatusManager } from './proxy/status'
-import { createWebApiRouter } from './web-api-routes'
+import { createWebApiRouter, toolsRouter } from './web-api-routes'
 import { fileStoreManager } from './store/file-store'
 
 // Get __dirname equivalent in ESM
@@ -238,6 +238,10 @@ async function startWebServer(): Promise<void> {
   app.use(webApi.bodyParser())
   app.use(webApi.routes())
   app.use(webApi.allowedMethods())
+
+  // Mount tools router
+  app.use(toolsRouter.routes())
+  app.use(toolsRouter.allowedMethods())
 
   return new Promise((resolve, reject) => {
     const server = app.listen(WEB_PORT, WEB_HOST, () => {

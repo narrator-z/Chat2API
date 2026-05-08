@@ -71,6 +71,17 @@ export class RequestForwarder {
     // 2. Delegate all injection logic to PromptInjectionService
     const result = promptInjectionService.process(messages, tools || [], model, provider?.id)
 
+    // DEBUG: Check if format instruction was injected
+    if (result.injected) {
+      const systemMsg = result.messages.find((m: any) => m.role === 'system')
+      if (systemMsg?.content) {
+        const content = typeof systemMsg.content === 'string' ? systemMsg.content : ''
+        console.log(`[Forwarder] DEBUG: After injection - system msg length: ${content.length}, has [function_calls]: ${content.includes('[function_calls]')}, has [TOOL_RESULT]: ${content.includes('[TOOL_RESULT]')}`)
+      }
+    } else {
+      console.log(`[Forwarder] DEBUG: No injection, reason: ${result.reason}`)
+    }
+
     // 3. Return processed messages with tools undefined (Web API doesn't support tools parameter)
     return { messages: result.messages, tools: undefined }
   }

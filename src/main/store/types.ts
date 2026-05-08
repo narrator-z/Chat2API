@@ -213,6 +213,8 @@ export interface AppConfig {
   managementApi: ManagementApiConfig
   /** Context management configuration */
   contextManagement: ContextManagementConfig
+  /** Tool registry configuration */
+  toolRegistry?: ToolRegistryConfig
 }
 
 /**
@@ -653,6 +655,68 @@ export interface StoreSchema {
   statistics: PersistentStatistics
   /** User model overrides for built-in providers */
   userModelOverrides: UserModelOverrides
+  /** Tool registry entries */
+  toolRegistry: ToolRegistryEntry[]
+}
+
+/**
+ * Tool Registry Entry Interface
+ * Stores complete tool definition for pre-configuration
+ */
+export interface ToolRegistryEntry {
+  /** Unique identifier */
+  id: string
+  /** Tool name (used for matching) */
+  name: string
+  /** Provider/Source this tool belongs to */
+  provider?: string
+  /** Complete tool definition (OpenAI function format) */
+  definition: {
+    type: 'function'
+    function: {
+      name: string
+      description?: string
+      parameters?: Record<string, any>
+    }
+  }
+  /** Whether this tool is enabled */
+  enabled: boolean
+  /** Tags for grouping tools */
+  tags?: string[]
+  /** Created time */
+  createdAt: number
+  /** Updated time */
+  updatedAt: number
+}
+
+/**
+ * Tool Registry Configuration
+ */
+export interface ToolRegistryConfig {
+  /** Whether tool registry is enabled */
+  enabled: boolean
+  /** Default format for injected prompts */
+  defaultFormat: 'bracket' | 'xml'
+  /** Whether to merge with client-provided tools */
+  mergeWithClientTools: boolean
+  /** Priority mode: 'registry' | 'client' | 'merge' */
+  priorityMode: 'registry' | 'client' | 'merge'
+  /** Whether to auto-register unknown tools from client requests */
+  autoRegister: boolean
+  /** Default provider for auto-registered tools */
+  autoRegisterProvider?: string
+}
+
+/**
+ * Default Tool Registry Configuration
+ */
+export const DEFAULT_TOOL_REGISTRY_CONFIG: ToolRegistryConfig = {
+  enabled: true,
+  defaultFormat: 'bracket',
+  mergeWithClientTools: true,
+  priorityMode: 'merge',
+  autoRegister: true,
+  autoRegisterProvider: 'auto-registered',
 }
 
 /**
@@ -748,6 +812,7 @@ export const DEFAULT_CONFIG: AppConfig = {
   toolPromptConfig: DEFAULT_TOOL_PROMPT_CONFIG,
   managementApi: DEFAULT_MANAGEMENT_API_CONFIG,
   contextManagement: DEFAULT_CONTEXT_MANAGEMENT_CONFIG,
+  toolRegistry: DEFAULT_TOOL_REGISTRY_CONFIG,
 }
 
 /**

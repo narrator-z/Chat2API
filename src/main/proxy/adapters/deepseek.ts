@@ -335,23 +335,39 @@ ${message.content || ''}
 
     if (processedMessages.length === 0) return ''
 
-    // For multi-turn mode, only send the last user message
+    // For multi-turn mode, include system prompt + last user message
     if (isMultiTurn) {
+      // Extract system prompt if present
+      let systemPrompt = ''
+      const nonSystemMessages: { role: string; text: string }[] = []
+      for (const msg of processedMessages) {
+        if (msg.role === 'system') {
+          systemPrompt = msg.text
+        } else {
+          nonSystemMessages.push(msg)
+        }
+      }
+
+      // Find the last user message
       let lastUserIdx = -1
-      for (let i = processedMessages.length - 1; i >= 0; i--) {
-        if (processedMessages[i].role === 'user') {
+      for (let i = nonSystemMessages.length - 1; i >= 0; i--) {
+        if (nonSystemMessages[i].role === 'user') {
           lastUserIdx = i
           break
         }
       }
-      
+
       if (lastUserIdx !== -1) {
-        const lastUserMsg = processedMessages[lastUserIdx]
+        const lastUserMsg = nonSystemMessages[lastUserIdx]
         let text = lastUserMsg.text
-        for (let i = lastUserIdx + 1; i < processedMessages.length; i++) {
-          if (processedMessages[i].role === 'tool') {
-            text += `\n\n${processedMessages[i].text}`
+        for (let i = lastUserIdx + 1; i < nonSystemMessages.length; i++) {
+          if (nonSystemMessages[i].role === 'tool') {
+            text += `\n\n${nonSystemMessages[i].text}`
           }
+        }
+        // Include system prompt in multi-turn mode
+        if (systemPrompt) {
+          return `${systemPrompt}\n\n<｜User｜>${text}`
         }
         return `<｜User｜>${text}`
       }
@@ -420,7 +436,10 @@ ${message.content || ''}
     }
 
     console.log('[DeepSeek] Sending chat completion request, sessionId:', sessionId)
-    console.log('[DeepSeek] Request prompt:', prompt.substring(0, 100))
+    console.log('[DeepSeek] Request prompt length:', prompt.length)
+    console.log('[DeepSeek] Prompt has [function_calls]:', prompt.includes('[function_calls]'))
+    console.log('[DeepSeek] Prompt has [TOOL_RESULT]:', prompt.includes('[TOOL_RESULT]'))
+    console.log('[DeepSeek] Prompt last 2000 chars:', prompt.slice(-2000))
 
     const response = await axios.post(
       `${DEEPSEEK_API_BASE}/v0/chat/completion`,
