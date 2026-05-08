@@ -127,28 +127,46 @@ export class LoadBalancer {
 
   /**
    * Check if provider supports model
+   * Supports "provider/model" format (e.g., "custom/deepseek-v4-flash-search")
    */
   private providerSupportsModel(provider: Provider, model: string): boolean {
+    // Extract actual model name from "provider/model" format
+    let normalizedModel = model
+    if (model.includes('/')) {
+      const parts = model.split('/')
+      normalizedModel = parts[parts.length - 1]  // Use the last part (actual model name)
+      console.log(`[LoadBalancer] providerSupportsModel extracted: "${model}" -> "${normalizedModel}"`)
+    }
+    
     const effectiveModels = fileStoreManager.getEffectiveModels(provider.id)
     if (effectiveModels.length === 0) {
       return true
     }
 
-    const normalizedModel = model.toLowerCase()
+    const normalizedModelLower = normalizedModel.toLowerCase()
     const supported = effectiveModels.some(m => {
       const normalizedSupported = m.displayName.toLowerCase()
       if (normalizedSupported.endsWith('*')) {
-        return normalizedModel.startsWith(normalizedSupported.slice(0, -1))
+        return normalizedModelLower.startsWith(normalizedSupported.slice(0, -1))
       }
-      return normalizedSupported === normalizedModel
+      return normalizedSupported === normalizedModelLower
     })
     
     if (supported) {
+      console.log(`[LoadBalancer] Provider ${provider.name} supports model "${normalizedModel}" (from "${model}") via effective models`)
       return true
     }
 
     const config = fileStoreManager.getConfig()
-    const globalMapping = config.modelMappings[model]
+    
+    // Try with normalized model name first
+    let globalMapping = config.modelMappings[normalizedModel]
+    
+    // If not found, try with original model name (might have prefix mapping)
+    if (!globalMapping) {
+      globalMapping = config.modelMappings[model]
+    }
+    
     if (globalMapping) {
       if (globalMapping.preferredProviderId) {
         if (globalMapping.preferredProviderId === provider.id) {
@@ -195,13 +213,24 @@ export class LoadBalancer {
 
   /**
    * Map model name
+   * Supports "provider/model" format (e.g., "custom/deepseek-v4-flash-search")
+   * where "provider" is ignored and "model" is used for mapping
    */
   private mapModel(model: string, provider: Provider): string {
     console.log(`[LoadBalancer] mapModel called with model="${model}", provider="${provider.name}"`)
     
+    // Handle "provider/model" format (e.g., "custom/deepseek-v4-flash-search")
+    // Extract the actual model name after the prefix
+    let normalizedModel = model
+    if (model.includes('/')) {
+      const parts = model.split('/')
+      normalizedModel = parts[parts.length - 1]  // Use the last part (actual model name)
+      console.log(`[LoadBalancer] Extracted model name from prefix format: "${model}" -> "${normalizedModel}"`)
+    }
+    
     const effectiveModels = fileStoreManager.getEffectiveModels(provider.id)
     const effectiveModel = effectiveModels.find(m => 
-      m.displayName.toLowerCase() === model.toLowerCase()
+      m.displayName.toLowerCase() === normalizedModel.toLowerCase()
     )
     
     if (effectiveModel) {
@@ -210,7 +239,7 @@ export class LoadBalancer {
     }
 
     const config = fileStoreManager.getConfig()
-    const mapping = config.modelMappings[model]
+    const mapping = config.modelMappings[normalizedModel]
 
     if (mapping && (!mapping.preferredProviderId || mapping.preferredProviderId === provider.id)) {
       const actualModel = mapping.actualModel
@@ -224,6 +253,14 @@ export class LoadBalancer {
         return actualEffectiveModel.actualModelId
       }
       
+      return actualModel
+    }
+
+    // If no mapping found for normalized model, try original model
+    const originalMapping = config.modelMappings[model]
+    if (originalMapping && (!originalMapping.preferredProviderId || originalMapping.preferredProviderId === provider.id)) {
+      const actualModel = originalMapping.actualModel
+      console.log(`[LoadBalancer] Model mapped from "${model}" to "${actualModel}" via global mapping (original key)`)
       return actualModel
     }
 
