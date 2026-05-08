@@ -12,7 +12,8 @@
   "scripts": {
     "dev": "bash scripts/dev.sh",
     "dev:win": "electron-vite dev",
-    "build": "electron-vite build",
+    "check:source-artifacts": "node scripts/check-source-artifacts.js",
+    "build": "npm run check:source-artifacts && electron-vite build",
     "preview": "electron-vite preview",
     "start": "electron-vite preview",
     "start:sandbox": "electron . --no-sandbox",

@@ -10,6 +10,7 @@ import axios, { AxiosResponse } from 'axios'
 import { getDeepSeekHash } from '../../lib/challenge'
 import type { Account, Provider } from '../../store/types'
 import { resolveDeepSeekChatOptions } from './providerModelOptions'
+import { getProviderToolProfile } from '../toolCalling/providerProfiles'
 
 const DEEPSEEK_API_BASE = 'https://chat.deepseek.com/api'
 
@@ -303,24 +304,24 @@ export class DeepSeekAdapter {
   }
 
   private messagesToPrompt(messages: DeepSeekMessage[], isMultiTurn: boolean = false): string {
+    const toolProfile = getProviderToolProfile('deepseek')
     const processedMessages = messages.map(message => {
       let text: string
 
       // Handle tool calls in assistant message
       if (message.role === 'assistant' && message.tool_calls && message.tool_calls.length > 0) {
-        const toolCallsText = message.tool_calls.map(tc => {
-          return `<tool_calling>
-<name>${tc.function.name}</name>
-<arguments>${tc.function.arguments}</arguments>
-</tool_calling>`
-        }).join('\n')
-        text = toolCallsText
+        text = toolProfile.formatAssistantToolCalls(message.tool_calls.map(tc => ({
+          id: tc.id,
+          name: tc.function.name,
+          arguments: tc.function.arguments,
+        })))
       }
       // Handle tool response message
       else if (message.role === 'tool' && message.tool_call_id) {
-        text = `<tool_response tool_call_id="${message.tool_call_id}">
-${message.content || ''}
-</tool_response>`
+        text = toolProfile.formatToolResult({
+          toolCallId: message.tool_call_id,
+          content: String(message.content || ''),
+        })
       }
       else if (Array.isArray(message.content)) {
         const texts = message.content
