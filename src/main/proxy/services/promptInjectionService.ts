@@ -11,7 +11,9 @@
 
 import { ChatMessage, ChatCompletionTool } from '../types'
 import { storeManager } from '../../store/store'
+import { fileStoreManager } from '../../store/file-store'
 import { PromptGenerator, ProtocolFormat } from './promptGenerator'
+import { toolRegistry } from './toolRegistry'
 import {
   detectClient,
   hasToolPromptInjected,
@@ -124,6 +126,29 @@ export class PromptInjectionService {
 
     console.log(`[PromptInjectionService] Detection: client=${detection.clientType}, toolSource=${detection.toolSource}, isKnownClient=${detection.isKnownClient}`)
 
+    // Process tools through tool registry (if enabled)
+    let processedTools = tools
+    let newlyRegisteredTools: any[] = []
+    if (toolRegistry.isInitialized()) {
+      const registryResult = toolRegistry.processClientTools(tools)
+      if (registryResult.tools.length > 0 || registryResult.merged) {
+        console.log(`[PromptInjectionService] Tool registry: source=${registryResult.source}, merged=${registryResult.merged}, tools=${registryResult.tools.length}`)
+        processedTools = registryResult.tools
+        detection.tools = processedTools
+        
+        // Handle newly auto-registered tools
+        if (registryResult.newlyRegistered && registryResult.newlyRegistered.length > 0) {
+          newlyRegisteredTools = registryResult.newlyRegistered
+          console.log(`[PromptInjectionService] Auto-registered ${newlyRegisteredTools.length} new tool(s): ${newlyRegisteredTools.map(t => t.name).join(', ')}`)
+          
+          // Save to store asynchronously
+          this.saveNewlyRegisteredTools(newlyRegisteredTools).catch(err => {
+            console.error(`[PromptInjectionService] Failed to save auto-registered tools:`, err)
+          })
+        }
+      }
+    }
+
     // Decide whether to inject
     const decision = this.shouldInject(detection, config)
 
@@ -140,6 +165,7 @@ export class PromptInjectionService {
 
     // Generate prompt
     const prompt = this.generatePrompt(messages, detection, config, provider)
+    console.log(`[PromptInjectionService] Generated prompt length: ${prompt?.length || 0}`)
 
     if (!prompt) {
       console.log('[PromptInjectionService] No prompt generated')
@@ -154,8 +180,8 @@ export class PromptInjectionService {
 
     // Inject prompt to messages
     const injectedMessages = this.injectToMessages(messages, prompt)
-
-    console.log('[PromptInjectionService] Injection complete')
+    const systemMsg = injectedMessages.find(m => m.role === 'system')
+    console.log(`[PromptInjectionService] Injection complete, system msg length: ${systemMsg?.content?.toString().length || 0}`)
     return {
       messages: injectedMessages,
       injected: true,
@@ -204,9 +230,14 @@ export class PromptInjectionService {
 
     // Mode: auto - detect client
     if (config.mode === 'auto') {
-      // Known client - skip injection (client already injected)
-      if (detection.isKnownClient) {
+      // Known client with its own format - skip injection
+      if (detection.isKnownClient && detection.injectsPrompt) {
         return { shouldInject: false, reason: `known_client_${detection.clientType}` }
+      }
+
+      // OpenClaw has its own ## Tooling format - skip injection to avoid format conflict
+      if (detection.isKnownClient && detection.clientType === 'openclaw') {
+        return { shouldInject: false, reason: `known_client_${detection.clientType}_has_own_format` }
       }
 
       // Unknown client with existing injection - skip
@@ -214,8 +245,8 @@ export class PromptInjectionService {
         return { shouldInject: false, reason: 'existing_injection' }
       }
 
-      // Unknown client - inject
-      return { shouldInject: true, reason: 'auto_unknown_client' }
+      // Known client without format OR unknown client - inject
+      return { shouldInject: true, reason: detection.isKnownClient ? 'known_client_no_format' : 'auto_unknown_client' }
     }
 
     // Default: inject if has tools
@@ -301,6 +332,40 @@ export class PromptInjectionService {
     }
 
     return result
+  }
+
+  /**
+   * Save auto-registered tools to store
+   */
+  private async saveNewlyRegisteredTools(tools: any[]): Promise<void> {
+    if (!tools || tools.length === 0) {
+      return
+    }
+
+    try {
+      if (!fileStoreManager.checkInitialized()) {
+        console.error('[PromptInjectionService] fileStoreManager not initialized')
+        return
+      }
+
+      // Add new tools to store
+      for (const tool of tools) {
+        fileStoreManager.addToolRegistryEntry({
+          id: tool.id,
+          name: tool.name,
+          provider: tool.provider,
+          definition: tool.definition,
+          enabled: tool.enabled,
+          tags: tool.tags || [],
+          createdAt: tool.createdAt,
+          updatedAt: tool.updatedAt
+        })
+      }
+      
+      console.log(`[PromptInjectionService] Saved ${tools.length} auto-registered tools to store`)
+    } catch (err) {
+      console.error('[PromptInjectionService] Error saving auto-registered tools:', err)
+    }
   }
 }
 
