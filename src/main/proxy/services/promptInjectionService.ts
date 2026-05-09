@@ -10,10 +10,8 @@
  */
 
 import { ChatMessage, ChatCompletionTool } from '../types'
-import { storeManager } from '../../store/store'
 import { fileStoreManager } from '../../store/file-store'
 import { PromptGenerator, ProtocolFormat } from './promptGenerator'
-import { toolRegistry } from './toolRegistry'
 import {
   detectClient,
   hasToolPromptInjected,
@@ -126,29 +124,6 @@ export class PromptInjectionService {
 
     console.log(`[PromptInjectionService] Detection: client=${detection.clientType}, toolSource=${detection.toolSource}, isKnownClient=${detection.isKnownClient}`)
 
-    // Process tools through tool registry (if enabled)
-    let processedTools = tools
-    let newlyRegisteredTools: any[] = []
-    if (toolRegistry.isInitialized()) {
-      const registryResult = toolRegistry.processClientTools(tools)
-      if (registryResult.tools.length > 0 || registryResult.merged) {
-        console.log(`[PromptInjectionService] Tool registry: source=${registryResult.source}, merged=${registryResult.merged}, tools=${registryResult.tools.length}`)
-        processedTools = registryResult.tools
-        detection.tools = processedTools
-        
-        // Handle newly auto-registered tools
-        if (registryResult.newlyRegistered && registryResult.newlyRegistered.length > 0) {
-          newlyRegisteredTools = registryResult.newlyRegistered
-          console.log(`[PromptInjectionService] Auto-registered ${newlyRegisteredTools.length} new tool(s): ${newlyRegisteredTools.map(t => t.name).join(', ')}`)
-          
-          // Save to store asynchronously
-          this.saveNewlyRegisteredTools(newlyRegisteredTools).catch(err => {
-            console.error(`[PromptInjectionService] Failed to save auto-registered tools:`, err)
-          })
-        }
-      }
-    }
-
     // Decide whether to inject
     const decision = this.shouldInject(detection, config)
 
@@ -157,7 +132,7 @@ export class PromptInjectionService {
       return {
         messages,
         injected: false,
-        tools: detection.tools,
+        tools: tools,
         shouldParseToolCalls: config.enableToolCallParsing && detection.toolSource !== 'none',
         reason: decision.reason,
       }
@@ -172,7 +147,7 @@ export class PromptInjectionService {
       return {
         messages,
         injected: false,
-        tools: detection.tools,
+        tools: tools,
         shouldParseToolCalls: config.enableToolCallParsing && detection.toolSource !== 'none',
         reason: 'no_prompt',
       }
@@ -180,29 +155,23 @@ export class PromptInjectionService {
 
     // Inject prompt to messages
     const injectedMessages = this.injectToMessages(messages, prompt)
-    const systemMsg = injectedMessages.find(m => m.role === 'system')
-    console.log(`[PromptInjectionService] Injection complete, system msg length: ${systemMsg?.content?.toString().length || 0}`)
+    console.log(`[PromptInjectionService] Injection complete`)
     return {
       messages: injectedMessages,
       injected: true,
-      tools: detection.tools,
+      tools: tools,
       shouldParseToolCalls: true,
     }
   }
 
   /**
    * Get configuration from store
+   * TODO: Add config persistence for Docker mode
    */
   private getConfig(): InjectionConfig {
-    const storeConfig = storeManager.getConfig()
-    const toolConfig = storeConfig.toolPromptConfig
-
-    return {
-      mode: (toolConfig?.mode as InjectionMode) || DEFAULT_CONFIG.mode,
-      defaultFormat: (toolConfig?.defaultFormat as ProtocolFormat) || DEFAULT_CONFIG.defaultFormat,
-      customPromptTemplate: toolConfig?.customPromptTemplate,
-      enableToolCallParsing: toolConfig?.enableToolCallParsing ?? DEFAULT_CONFIG.enableToolCallParsing,
-    }
+    // For now, use DEFAULT_CONFIG
+    // TODO: Read from config.json for persistent settings
+    return DEFAULT_CONFIG
   }
 
   /**
@@ -332,40 +301,6 @@ export class PromptInjectionService {
     }
 
     return result
-  }
-
-  /**
-   * Save auto-registered tools to store
-   */
-  private async saveNewlyRegisteredTools(tools: any[]): Promise<void> {
-    if (!tools || tools.length === 0) {
-      return
-    }
-
-    try {
-      if (!fileStoreManager.checkInitialized()) {
-        console.error('[PromptInjectionService] fileStoreManager not initialized')
-        return
-      }
-
-      // Add new tools to store
-      for (const tool of tools) {
-        fileStoreManager.addToolRegistryEntry({
-          id: tool.id,
-          name: tool.name,
-          provider: tool.provider,
-          definition: tool.definition,
-          enabled: tool.enabled,
-          tags: tool.tags || [],
-          createdAt: tool.createdAt,
-          updatedAt: tool.updatedAt
-        })
-      }
-      
-      console.log(`[PromptInjectionService] Saved ${tools.length} auto-registered tools to store`)
-    } catch (err) {
-      console.error('[PromptInjectionService] Error saving auto-registered tools:', err)
-    }
   }
 }
 
