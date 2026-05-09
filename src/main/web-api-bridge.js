@@ -216,6 +216,20 @@
     updateConfig: (updates) => put('/context-management/config', updates),
   };
 
+  const modelMappingsAPI = {
+    getAll: () => get('/model-mappings'),
+    add: (data) => post('/model-mappings', data),
+    update: (requestModel, updates) => put('/model-mappings/' + encodeURIComponent(requestModel), updates),
+    delete: (requestModel) => del('/model-mappings/' + encodeURIComponent(requestModel)),
+  };
+
+  const apiKeysAPI = {
+    getAll: () => get('/api-keys'),
+    add: (data) => post('/api-keys', data),
+    update: (id, updates) => put('/api-keys/' + id, updates),
+    delete: (id) => del('/api-keys/' + id),
+  };
+
   const trayAPI = {
     openDashboard: () => {},
     setHeight: () => {},
@@ -237,6 +251,8 @@
     session: sessionAPI,
     managementApi: managementApiAPI,
     contextManagement: contextManagementAPI,
+    modelMappings: modelMappingsAPI,
+    apiKeys: apiKeysAPI,
     tray: trayAPI,
 
     on: (channel, callback) => on(channel, callback),

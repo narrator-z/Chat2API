@@ -1081,5 +1081,83 @@ export function createWebApiRouter() {
   }
 }
 
+// ==================== Model Mappings ====================
+
+router.get('/model-mappings', async (ctx) => {
+  jsonOk(ctx, fileStoreManager.getModelMappings())
+})
+
+router.post('/model-mappings', async (ctx) => {
+  const data = ctx.request.body as any
+  try {
+    const mapping = fileStoreManager.addModelMapping(data)
+    jsonOk(ctx, mapping)
+  } catch (e: any) {
+    jsonError(ctx, e?.message || 'Failed to add model mapping')
+  }
+})
+
+router.put('/model-mappings/:requestModel', async (ctx) => {
+  const { requestModel } = ctx.params
+  const updates = ctx.request.body as any
+  try {
+    const mapping = fileStoreManager.updateModelMapping(decodeURIComponent(requestModel), updates)
+    if (!mapping) return jsonError(ctx, 'Model mapping not found', 404)
+    jsonOk(ctx, mapping)
+  } catch (e: any) {
+    jsonError(ctx, e?.message || 'Failed to update model mapping')
+  }
+})
+
+router.delete('/model-mappings/:requestModel', async (ctx) => {
+  const { requestModel } = ctx.params
+  try {
+    const success = fileStoreManager.deleteModelMapping(decodeURIComponent(requestModel))
+    if (!success) return jsonError(ctx, 'Model mapping not found', 404)
+    jsonOk(ctx, true)
+  } catch (e: any) {
+    jsonError(ctx, e?.message || 'Failed to delete model mapping')
+  }
+})
+
+// ==================== API Keys ====================
+
+router.get('/api-keys', async (ctx) => {
+  jsonOk(ctx, fileStoreManager.getApiKeys())
+})
+
+router.post('/api-keys', async (ctx) => {
+  const data = ctx.request.body as any
+  try {
+    const apiKey = fileStoreManager.addApiKey(data)
+    jsonOk(ctx, apiKey)
+  } catch (e: any) {
+    jsonError(ctx, e?.message || 'Failed to add API key')
+  }
+})
+
+router.put('/api-keys/:id', async (ctx) => {
+  const { id } = ctx.params
+  const updates = ctx.request.body as any
+  try {
+    const apiKey = fileStoreManager.updateApiKey(id, updates)
+    if (!apiKey) return jsonError(ctx, 'API key not found', 404)
+    jsonOk(ctx, apiKey)
+  } catch (e: any) {
+    jsonError(ctx, e?.message || 'Failed to update API key')
+  }
+})
+
+router.delete('/api-keys/:id', async (ctx) => {
+  const { id } = ctx.params
+  try {
+    const success = fileStoreManager.deleteApiKey(id)
+    if (!success) return jsonError(ctx, 'API key not found', 404)
+    jsonOk(ctx, true)
+  } catch (e: any) {
+    jsonError(ctx, e?.message || 'Failed to delete API key')
+  }
+})
+
 // Export tools router for use in proxy server
 export { toolsRouter }
