@@ -530,6 +530,15 @@ router.post('/completions', async (ctx: Context) => {
           },
         }
       }
+
+      // Update log with response body for non-stream requests
+      if (logEntryId) {
+        fileStoreManager.updateRequestLog(logEntryId, {
+          responseBody: JSON.stringify(ctx.body),
+          responseStatus: 200,
+          latency: Date.now() - startTime,
+        })
+      }
     }
   } catch (error) {
     const latency = Date.now() - startTime
