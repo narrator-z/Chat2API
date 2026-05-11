@@ -395,6 +395,15 @@ class StoreManager {
   }
 
   /**
+   * Destroy and cleanup resources
+   * Call this when shutting down the application
+   */
+  destroy(): void {
+    this.flushPendingWrites()
+    console.log('[Store] Destroyed and resources cleaned up')
+  }
+
+  /**
    * Encrypt Sensitive Data
    * @param data Data to encrypt
    * @returns Encrypted string

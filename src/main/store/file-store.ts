@@ -5,7 +5,7 @@
  */
 
 import { join } from 'path'
-import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'fs'
+import { existsSync, readFileSync, writeFileSync, mkdirSync, watchFile, unwatchFile, statSync } from 'fs'
 import {
   StoreSchema,
   AppConfig,
@@ -65,6 +65,10 @@ class FileStoreManager {
   private logFlushTimer: NodeJS.Timeout | null = null
   private readonly logFlushDelayMs = 2000
   private dataDir: string = '/app/data'
+  private fileWatcher: FSWatcher | null = null
+  private isReloading: boolean = false  // Prevent reload loops
+  private pollTimer: NodeJS.Timeout | null = null  // Polling timer for backup
+  private lastFileMtime: number = 0  // Last file modification time for polling
 
   /**
    * Set data directory
@@ -115,6 +119,9 @@ class FileStoreManager {
       this._isInitialized = true
       this.initializationError = null
       console.log('[FileStore] Storage initialized successfully')
+      
+      // Start file watcher for hot-reload
+      this.startFileWatcher()
     } catch (error) {
       console.error('[FileStore] Failed to initialize storage:', error)
       this.initializationError = error instanceof Error ? error : new Error(String(error))
@@ -144,17 +151,146 @@ class FileStoreManager {
 
   /**
    * Save data to JSON file
+   * Temporarily stops file watcher to avoid reloading data just saved
    */
   private saveData(): void {
     if (!this.data) {
       return
     }
 
+    // Stop file watcher temporarily to avoid reloading data we just saved
+    const wasWatching = !!this.fileWatcher
+    if (wasWatching) {
+      this.stopFileWatcher()
+    }
+
     const dataPath = join(this.dataDir, 'data.json')
     try {
       writeFileSync(dataPath, JSON.stringify(this.data, null, 2), 'utf-8')
+      console.log('[FileStore] Data saved to file')
     } catch (error) {
       console.error('[FileStore] Failed to save data:', error)
+    } finally {
+      // Restart file watcher
+      if (wasWatching) {
+        this.startFileWatcher()
+      }
+    }
+  }
+
+  /**
+   * Start file watcher for hot-reload
+   * Watches the data.json file for changes by other processes
+   */
+  private startFileWatcher(): void {
+    if (this.fileWatcher) {
+      return  // Already watching
+    }
+
+    const dataPath = join(this.dataDir, 'data.json')
+    
+    try {
+      this.fileWatcher = watchFile(dataPath, (eventType, filename) => {
+        if (eventType === 'change' && !this.isReloading) {
+          console.log('[FileStore] Config file changed (file watcher), reloading...')
+          this.reloadData()
+        }
+      })
+      console.log('[FileStore] File watcher started for:', dataPath)
+    } catch (error) {
+      console.error('[FileStore] Failed to start file watcher:', error)
+    }
+
+    // Also start polling as backup (some file systems don't trigger watch events)
+    this.startPollWatcher()
+  }
+
+  /**
+   * Start poll watcher as backup
+   * Some file systems (e.g., Docker volumes, NFS) don't trigger watch events
+   */
+  private startPollWatcher(): void {
+    if (this.pollTimer) {
+      return  // Already polling
+    }
+
+    // Check file modification every 5 seconds
+    this.pollTimer = setInterval(() => {
+      if (this.isReloading) {
+        return
+      }
+
+      try {
+        const dataPath = join(this.dataDir, 'data.json')
+        if (existsSync(dataPath)) {
+          const stats = statSync(dataPath)
+          const mtime = stats.mtimeMs
+          
+          if (this.lastFileMtime === 0) {
+            // First poll, just record the time
+            this.lastFileMtime = mtime
+          } else if (mtime !== this.lastFileMtime) {
+            // File has been modified
+            console.log('[FileStore] Config file changed (poll watcher), reloading...')
+            this.lastFileMtime = mtime
+            this.reloadData()
+          }
+        }
+      } catch (error) {
+        console.error('[FileStore] Poll watcher error:', error)
+      }
+    }, 5000)  // Check every 5 seconds
+
+    console.log('[FileStore] Poll watcher started (interval: 5s)')
+  }
+
+  /**
+   * Stop file watcher
+   */
+  private stopFileWatcher(): void {
+    if (this.fileWatcher) {
+      unwatchFile(join(this.dataDir, 'data.json'))
+      this.fileWatcher = null
+      console.log('[FileStore] File watcher stopped')
+    }
+
+    if (this.pollTimer) {
+      clearInterval(this.pollTimer)
+      this.pollTimer = null
+      console.log('[FileStore] Poll watcher stopped')
+    }
+  }
+
+  /**
+   * Reload data from file
+   * Called when the file is modified by another process
+   */
+  private reloadData(): void {
+    if (this.isReloading) {
+      return  // Prevent recursive reloads
+    }
+
+    this.isReloading = true
+    
+    try {
+      const dataPath = join(this.dataDir, 'data.json')
+      
+      if (existsSync(dataPath)) {
+        const content = readFileSync(dataPath, 'utf-8')
+        const parsed = JSON.parse(content)
+        this.data = this.mergeWithDefaults(parsed)
+        console.log('[FileStore] Data reloaded from file')
+        
+        // Sync request log config if changed
+        const config = this.normalizeConfig(this.data.config || DEFAULT_CONFIG)
+        if (this.requestLogManager) {
+          this.requestLogManager.setConfig(config.requestLogConfig)
+        }
+      }
+    } catch (error) {
+      console.error('[FileStore] Failed to reload data:', error)
+    } finally {
+      this.isReloading = false
     }
   }
 
@@ -343,6 +479,16 @@ class FileStoreManager {
   flushPendingWrites(): void {
     this.flushLogsSync()
     this.requestLogManager?.flushSync()
+  }
+
+  /**
+   * Destroy and cleanup resources
+   * Call this when shutting down the application
+   */
+  destroy(): void {
+    this.stopFileWatcher()
+    this.requestLogManager?.flushSync()
+    console.log('[FileStore] Destroyed and resources cleaned up')
   }
 
   private flushLogsSync(): void {
@@ -1172,6 +1318,18 @@ class FileStoreManager {
     return this.getEffectiveModels(providerId)
   }
 
+  // ==================== Cleanup ====================
+
+  /**
+   * Destroy and cleanup resources
+   * Call this when shutting down the application
+   */
+  destroy(): void {
+    this.stopFileWatcher()
+    this.requestLogManager?.flushSync()
+    console.log('[FileStore] Destroyed and resources cleaned up')
+  }
+
   // ==================== Store Operations ====================
 
   getStore(): any {
@@ -1319,6 +1477,16 @@ class FileStoreManager {
     this.ensureInitialized()
     this.data!.toolRegistry = []
     this.saveData()
+  }
+
+  /**
+   * Destroy and cleanup resources
+   * Call this when shutting down the application
+   */
+  destroy(): void {
+    this.stopFileWatcher()
+    this.requestLogManager?.flushSync()
+    console.log('[FileStore] Destroyed and resources cleaned up')
   }
 }
 
