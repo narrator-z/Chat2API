@@ -77,7 +77,7 @@ export function RequestChart({ data, className }: RequestChartProps) {
                 type="monotone"
                 dataKey="success"
                 name={t('common.success')}
-                stroke="hsl(142, 76%, 36%)"
+                stroke="#3b82f6"
                 strokeWidth={2}
                 dot={false}
                 activeDot={{ r: 4 }}
