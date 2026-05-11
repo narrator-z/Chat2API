@@ -58,3 +58,6 @@ src/renderer/next-app/
 
 # Backup
 backup/
+
+# Data directory (runtime data, logs, configs - not tracked)
+data/
