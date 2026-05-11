@@ -126,6 +126,24 @@ export class LoadBalancer {
   }
 
   /**
+   * Find mapping by wildcard matching
+   * Supports "gpt-*" to match "gpt-3.5-turbo", "gpt-4", etc.
+   */
+  private findWildcardMapping(model: string, mappings: Record<string, any>): any {
+    const modelLower = model.toLowerCase()
+    for (const key of Object.keys(mappings)) {
+      if (key.endsWith('*')) {
+        const prefix = key.slice(0, -1).toLowerCase()
+        if (modelLower.startsWith(prefix)) {
+          console.log(`[LoadBalancer] Wildcard match: "${model}" matches pattern "${key}"`)
+          return mappings[key]
+        }
+      }
+    }
+    return null
+  }
+
+  /**
    * Check if provider supports model
    * Supports "provider/model" format (e.g., "custom/deepseek-v4-flash-search")
    */
@@ -159,12 +177,13 @@ export class LoadBalancer {
 
     const config = fileStoreManager.getConfig()
     
-    // Try with normalized model name first
-    let globalMapping = config.modelMappings[normalizedModel]
+    // Try exact match first
+    let globalMapping = config.modelMappings[normalizedModel] || config.modelMappings[model]
     
-    // If not found, try with original model name (might have prefix mapping)
+    // If not found, try wildcard matching
     if (!globalMapping) {
-      globalMapping = config.modelMappings[model]
+      globalMapping = this.findWildcardMapping(normalizedModel, config.modelMappings) ||
+                     this.findWildcardMapping(model, config.modelMappings)
     }
     
     if (globalMapping) {
@@ -239,7 +258,8 @@ export class LoadBalancer {
     }
 
     const config = fileStoreManager.getConfig()
-    const mapping = config.modelMappings[normalizedModel]
+    const mapping = config.modelMappings[normalizedModel] || 
+                     this.findWildcardMapping(normalizedModel, config.modelMappings)
 
     if (mapping && (!mapping.preferredProviderId || mapping.preferredProviderId === provider.id)) {
       const actualModel = mapping.actualModel
@@ -257,7 +277,8 @@ export class LoadBalancer {
     }
 
     // If no mapping found for normalized model, try original model
-    const originalMapping = config.modelMappings[model]
+    const originalMapping = config.modelMappings[model] ||
+                          this.findWildcardMapping(model, config.modelMappings)
     if (originalMapping && (!originalMapping.preferredProviderId || originalMapping.preferredProviderId === provider.id)) {
       const actualModel = originalMapping.actualModel
       console.log(`[LoadBalancer] Model mapped from "${model}" to "${actualModel}" via global mapping (original key)`)
