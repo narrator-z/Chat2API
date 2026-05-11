@@ -1318,18 +1318,6 @@ class FileStoreManager {
     return this.getEffectiveModels(providerId)
   }
 
-  // ==================== Cleanup ====================
-
-  /**
-   * Destroy and cleanup resources
-   * Call this when shutting down the application
-   */
-  destroy(): void {
-    this.stopFileWatcher()
-    this.requestLogManager?.flushSync()
-    console.log('[FileStore] Destroyed and resources cleaned up')
-  }
-
   // ==================== Store Operations ====================
 
   getStore(): any {
