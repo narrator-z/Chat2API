@@ -9,8 +9,10 @@ import { glmConfig } from '../../src/main/providers/builtin/glm.ts'
 import { kimiConfig } from '../../src/main/providers/builtin/kimi.ts'
 import { minimaxConfig } from '../../src/main/providers/builtin/minimax.ts'
 import { mimoConfig } from '../../src/main/providers/builtin/mimo.ts'
+import { perplexityConfig } from '../../src/main/providers/builtin/perplexity.ts'
 import { qwenConfig } from '../../src/main/providers/builtin/qwen.ts'
 import { qwenAiConfig } from '../../src/main/providers/builtin/qwen-ai.ts'
+import { zaiConfig } from '../../src/main/providers/builtin/zai.ts'
 import {
   DEEPSEEK_PRIMARY_MODELS,
   DEFAULT_DEEPSEEK_MODEL_MAPPINGS,
@@ -327,6 +329,37 @@ test('Qwen AI defaults keep only the filtered current web model set', () => {
   assert.doesNotMatch(qwenAiAdapterSource, /'qwen2\.5':/)
 })
 
+test('Z.ai default models match the latest chat.z.ai HAR model ids', () => {
+  const expectedModels = [
+    'GLM-5.1',
+    'GLM-5-Turbo',
+    'GLM-5V-Turbo',
+    'GLM-5',
+    'GLM-4.7',
+  ]
+  const expectedMappings = {
+    'GLM-5.1': 'GLM-5.1',
+    'GLM-5-Turbo': 'GLM-5-Turbo',
+    'GLM-5V-Turbo': 'GLM-5v-Turbo',
+    'GLM-5': 'glm-5',
+    'GLM-4.7': 'glm-4.7',
+  }
+
+  assert.deepEqual(zaiConfig.supportedModels, expectedModels)
+  assert.deepEqual(zaiConfig.modelMappings, expectedMappings)
+
+  for (const removedModel of ['glm-4.6v', 'glm-4.6', 'glm-4.5v', 'glm-4.5-air']) {
+    assert.equal(zaiConfig.modelMappings?.[removedModel], undefined, removedModel)
+  }
+
+  const zaiAdapterSource = readFileSync(join(root, 'src/main/proxy/adapters/zai.ts'), 'utf8')
+  assert.match(zaiAdapterSource, /'glm-5\.1': 'GLM-5\.1'/)
+  assert.match(zaiAdapterSource, /'glm-5v-turbo': 'GLM-5v-Turbo'/)
+  assert.match(zaiAdapterSource, /'GLM-5V-Turbo': 'GLM-5v-Turbo'/)
+  assert.doesNotMatch(zaiAdapterSource, /'glm-4\.6v':/)
+  assert.doesNotMatch(zaiAdapterSource, /'glm-4\.5-air':/)
+})
+
 test('provider docs cover every built-in provider and Qwen AI manual model additions', () => {
   const providerDocs = [
     'deepseek',
@@ -380,6 +413,32 @@ test('provider docs cover every built-in provider and Qwen AI manual model addit
     assert.match(qwenAiDoc, new RegExp(displayName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')))
     assert.match(qwenAiDoc, new RegExp(actualModelId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')))
   }
+})
+
+test('README Supported Providers model lists mirror current defaults with Perplexity Free mode only', () => {
+  const readme = readFileSync(join(root, 'README.md'), 'utf8')
+  const readmeCn = readFileSync(join(root, 'README_CN.md'), 'utf8')
+  const expectedRows = [
+    ['DeepSeek', deepseekConfig.supportedModels?.join(', ')],
+    ['GLM', glmConfig.supportedModels?.join(', ')],
+    ['Kimi', kimiConfig.supportedModels?.join(', ')],
+    ['MiniMax', minimaxConfig.supportedModels?.join(', ')],
+    ['Mimo', mimoConfig.supportedModels?.join(', ')],
+    ['Perplexity', 'Auto'],
+    ['Qwen', qwenConfig.supportedModels?.join(', ')],
+    ['Qwen AI', qwenAiConfig.supportedModels?.join(', ')],
+    ['Z.ai', zaiConfig.supportedModels?.join(', ')],
+  ]
+
+  assert.deepEqual(perplexityConfig.supportedModels?.[0], 'Auto')
+
+  for (const [provider, models] of expectedRows) {
+    assert.match(readme, new RegExp(`\\| ${provider.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}[^\\n]*\\| ${models?.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*\\|`))
+    assert.match(readmeCn, new RegExp(`\\| ${provider.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}[^\\n]*\\| ${models?.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*\\|`))
+  }
+
+  assert.doesNotMatch(readme, /Perplexity[^\n]*(Turbo|PPLX-Pro|GPT-5|Gemini-2\.5-Pro|Claude-Sonnet-4|Claude-Opus-4|Nemotron)/)
+  assert.doesNotMatch(readmeCn, /Perplexity[^\n]*(Turbo|PPLX-Pro|GPT-5|Gemini-2\.5-Pro|Claude-Sonnet-4|Claude-Opus-4|Nemotron)/)
 })
 
 test('Mimo model names and conversation flow match Xiaomi AI Studio web requests', () => {
