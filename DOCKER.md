@@ -4,31 +4,76 @@ Chat2API 支持 Docker 容器化部署，提供 OpenAI 兼容的 API 代理服�
 
 ## 快速开始
 
-### 使用 Docker Compose（推荐）
+### 方式一：使用预构建镜像（推荐，无需克隆仓库）
 
-1. 克隆仓库并进入项目目录：
+直接创建 `docker-compose.yml` 文件并启动：
+
 ```bash
-git clone https://github.com/chat2api/Chat2API.git
-cd Chat2API
+mkdir chat2api && cd chat2api
+curl -o docker-compose.yml https://raw.githubusercontent.com/narrator-z/Chat2API/docker/docker-compose.yml
+docker-compose up -d
 ```
 
-2. 启动服务：
+或手动创建 `docker-compose.yml`：
+```yaml
+services:
+  chat2api:
+    image: ghcr.io/narrator-z/chat2api:latest
+    container_name: chat2api-manager
+    restart: unless-stopped
+    ports:
+      - "8088:8088"
+      - "3002:3001"
+    environment:
+      - NODE_ENV=production
+      - DATA_DIR=/app/data
+      - API_PORT=8088
+      - WEB_PORT=3001
+    volumes:
+      - ./data:/app/data
+```
+
+启动：
 ```bash
 docker-compose up -d
 ```
 
-3. 访问服务：
-- Web 管理界面：http://localhost:3001
-- API 代理服务：http://localhost:8088
+### 方式二：本地构建镜像（需要克隆仓库）
+
+1. 克隆仓库并进入项目目录：
+```bash
+git clone https://github.com/narrator-z/Chat2API.git
+cd Chat2API
+```
+
+2. 使用本地构建版 Compose 启动：
+```bash
+docker-compose -f docker-compose.build.yml up -d --build
+```
+
+或使用 npm 脚本：
+```bash
+npm run docker:up:build
+```
 
 ### 使用 Docker 命令
 
-1. 构建镜像：
+1. 拉取并运行预构建镜像：
+```bash
+docker run -d \
+  --name chat2api-manager \
+  -p 8088:8088 \
+  -p 3001:3001 \
+  -v $(pwd)/data:/app/data \
+  ghcr.io/narrator-z/chat2api:latest
+```
+
+2. 或本地构建镜像：
 ```bash
 docker build -t chat2api:latest .
 ```
 
-2. 运行容器：
+3. 运行本地构建的容器：
 ```bash
 docker run -d \
   --name chat2api-manager \
@@ -153,12 +198,25 @@ docker logs chat2api-manager
 chmod -R 755 ./data
 ```
 
-### 重新构建镜像
+### 镜像更新
+
+使用预构建镜像时，更新到最新版本：
+```bash
+docker-compose pull
+docker-compose up -d
+```
+
+### 本地重新构建镜像
 
 如果代码有更新，重新构建镜像：
 ```bash
-docker-compose build
-docker-compose up -d
+docker-compose -f docker-compose.build.yml build
+docker-compose -f docker-compose.build.yml up -d
+```
+
+或使用 npm 脚本：
+```bash
+npm run docker:rebuild
 ```
 
 ## 生产环境建议
@@ -168,6 +226,28 @@ docker-compose up -d
 3. **设置资源限制**：在 docker-compose.yml 中添加资源限制
 4. **定期备份**：定期备份 data 目录
 5. **监控日志**：配置日志收集和监控
+
+## 镜像构建与发布
+
+本项目使用 GitHub Actions 自动构建多架构（amd64/arm64）Docker 镜像并推送到 **GHCR**（GitHub Container Registry）。
+
+- 每次推送到 `main` 或 `docker` 分支会自动构建并推送 `latest` 标签
+- 发布 tag（如 `v1.3.0`）会推送对应版本标签
+- 镜像地址：`ghcr.io/narrator-z/chat2api:latest`
+
+### 手动构建并推送多架构镜像
+
+```bash
+npm run docker:build:push
+```
+
+或手动执行：
+```bash
+docker buildx build \
+  --platform linux/amd64,linux/arm64 \
+  -t ghcr.io/narrator-z/chat2api:latest \
+  --push .
+```
 
 ### 资源限制示例
 

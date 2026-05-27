@@ -1,6 +1,8 @@
 services:
   chat2api:
-    image: ghcr.io/narrator-z/chat2api:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
     container_name: chat2api-manager
     restart: unless-stopped
 

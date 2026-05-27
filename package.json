@@ -28,10 +28,12 @@
     "build:all": "npm run build && electron-builder --win --mac --linux",
     "release": "node scripts/release.js",
     "docker:build": "docker build -t chat2api:latest .",
+    "docker:build:push": "docker buildx build --platform linux/amd64,linux/arm64 -t ghcr.io/narrator-z/chat2api:latest --push .",
     "docker:up": "docker-compose up -d",
+    "docker:up:build": "docker-compose -f docker-compose.build.yml up -d --build",
     "docker:down": "docker-compose down",
     "docker:logs": "docker-compose logs -f",
-    "docker:rebuild": "docker-compose build && docker-compose up -d"
+    "docker:rebuild": "docker-compose -f docker-compose.build.yml build && docker-compose up -d"
   },
   "dependencies": {
     "@koa/router": "^15.3.0",

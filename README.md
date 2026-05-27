@@ -104,6 +104,29 @@ npm run build:linux        # Build for Linux (AppImage, deb)
 npm run build:all          # Build for all platforms
 ```
 
+### Docker Deploy
+
+**Use pre-built image (no clone required):**
+
+```bash
+mkdir chat2api && cd chat2api
+curl -o docker-compose.yml https://raw.githubusercontent.com/narrator-z/Chat2API/docker/docker-compose.yml
+docker-compose up -d
+```
+
+**Or build locally:**
+
+```bash
+git clone https://github.com/narrator-z/Chat2API.git
+cd Chat2API
+docker-compose -f docker-compose.build.yml up -d --build
+```
+
+- Web UI: http://localhost:3002
+- API Proxy: http://localhost:8088
+
+See [DOCKER.md](DOCKER.md) for full configuration.
+
 ## 📖 Usage
 
 ### Step 1: Launch the App

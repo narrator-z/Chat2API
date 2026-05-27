@@ -104,6 +104,29 @@ npm run build:linux        # 构建 Linux 版本 (AppImage, deb)
 npm run build:all          # 构建所有平台
 ```
 
+### Docker 部署
+
+**使用预构建镜像（无需克隆仓库）：**
+
+```bash
+mkdir chat2api && cd chat2api
+curl -o docker-compose.yml https://raw.githubusercontent.com/narrator-z/Chat2API/docker/docker-compose.yml
+docker-compose up -d
+```
+
+**或本地构建：**
+
+```bash
+git clone https://github.com/narrator-z/Chat2API.git
+cd Chat2API
+docker-compose -f docker-compose.build.yml up -d --build
+```
+
+- Web 管理界面：http://localhost:3002
+- API 代理服务：http://localhost:8088
+
+完整配置见 [DOCKER.md](DOCKER.md)。
+
 ## 📖 使用方法
 
 ### 步骤 1：启动应用
