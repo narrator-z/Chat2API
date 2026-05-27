@@ -463,7 +463,8 @@ export class RequestForwarder {
         deleteSessionCallback,
         transformedRequest.web_search,
         transformedRequest.reasoning_effort,
-        transformed.plan
+        transformed.plan,
+        request.model
       )
       
       if (request.stream) {

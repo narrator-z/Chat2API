@@ -193,7 +193,7 @@
     "clearChatsWarning": "此操作将删除该供应商网站上的所有对话历史，且无法恢复。",
     "clearChatsSuccess": "对话记录已清除",
     "clearChatsFailed": "清除对话记录失败",
-    "clearChatsOnlyForQwenAI": "此功能仅支持 Qwen AI、MiniMax、Z.ai、Perplexity、DeepSeek、GLM 和 Mimo 供应商",
+    "clearChatsOnlyForQwenAI": "此功能仅支持 Kimi、Qwen、Qwen AI、MiniMax、Z.ai、Perplexity、DeepSeek、GLM 和 Mimo 供应商",
     "saving": "保存中...",
     "saveChanges": "保存更改",
     "required": "必填",
@@ -243,25 +243,13 @@
     "userTokenPlaceholder": "请输入 DeepSeek 用户 Token",
     "userTokenHelp": "从 DeepSeek 网页版获取的认证 Token，可在浏览器开发者工具 Application -> Local Storage -> userToken 中找到",
     "models": {
-      "deepseek-v4-pro": "DeepSeek V4 Pro",
-      "deepseek-v4-pro-think": "DeepSeek V4 Pro - 思考",
-      "deepseek-v4-pro-search": "DeepSeek V4 Pro - 搜索",
-      "deepseek-v4-pro-think-search": "DeepSeek V4 Pro - 思考+搜索",
       "deepseek-v4-flash": "DeepSeek V4 Flash",
-      "deepseek-v4-flash-think": "DeepSeek V4 Flash - 思考",
-      "deepseek-v4-flash-search": "DeepSeek V4 Flash - 搜索",
-      "deepseek-v4-flash-think-search": "DeepSeek V4 Flash - 思考+搜索",
-      "deepseek-chat": "DeepSeek Chat (兼容旧名)",
-      "deepseek-reasoner": "DeepSeek Reasoner (兼容旧名)",
-      "DeepSeek-V3.2": "DeepSeek V3.2 - 标准对话",
-      "DeepSeek-Search": "DeepSeek Search - 联网搜索",
-      "DeepSeek-R1": "DeepSeek R1 - 深度思考",
-      "DeepSeek-R1-Search": "DeepSeek R1 Search - 联网+思考"
+      "deepseek-v4-pro": "DeepSeek V4 Pro"
     }
   },
   "glm": {
     "name": "GLM",
-    "description": "智谱清言 AI 助手，支持 GLM-5 旗舰模型、深度思考和联网搜索",
+    "description": "智谱清言 AI 助手，支持 GLM-5.1 旗舰模型、深度思考和联网搜索",
     "refreshToken": "刷新令牌",
     "refreshTokenPlaceholder": "请输入智谱清言刷新令牌",
     "refreshTokenHelp": "从智谱清言网页版获取 chatglm_refresh_token，可在浏览器开发者工具 Application -> Cookie 中找到"
@@ -305,11 +293,12 @@
     "codeMode": "代码模式",
     "codeModeDesc": "使用 Qwen-Coder 模型，专注于编程任务",
     "models": {
-      "qwen3-235b-a22b": "Qwen3-235B-A22B (深度思考)",
-      "qwen3-coder-plus": "Qwen3-Coder (代码模式)",
-      "qwen3-30b-a3b": "Qwen3-30B-A3B",
-      "qwen-max-latest": "Qwen2.5-Max",
-      "Qwen3.5-Plus": "Qwen3.5-Plus"
+      "Qwen3.6": "Qwen",
+      "Qwen3.7-Max": "Qwen3.7-Max",
+      "Qwen3.5-Flash": "Qwen3.5-Flash",
+      "Qwen3-Max": "Qwen3-Max",
+      "Qwen3-Max-Thinking-Preview": "Qwen3-Max-Thinking-Preview",
+      "Qwen3-Coder": "Qwen3-Coder"
     }
   },
   "qwen-ai": {
@@ -385,6 +374,13 @@
     "modelMappingDesc": "将请求模型映射到实际使用的模型",
     "searchMappings": "搜索映射规则...",
     "addMapping": "添加映射",
+    "restoreDefaults": "恢复默认",
+    "confirmRestoreDefaults": "恢复默认会移除自定义模型映射，并重新写入内置映射。确定继续吗？",
+    "defaultsRestored": "模型映射已恢复为默认配置",
+    "mappingSource": "来源",
+    "builtInMapping": "内置",
+    "customMapping": "自定义",
+    "builtInMappingReadonly": "内置映射由系统管理，不能编辑或删除",
     "requestModel": "请求模型",
     "actualModel": "实际模型",
     "preferredProvider": "优先供应商",
@@ -954,7 +950,7 @@
     "promptTemplateTooltip": "自定义提示词模板用于指导模型如何输出工具调用。留空则使用默认 provider profile 模板。支持变量：{{tools}}（后端生成的工具说明）、{{tool_names}}（工具名称列表）、{{format}}（协议 ID）",
     "customTemplate": "自定义模板",
     "customTemplateDesc": "自定义提示词模板。支持变量：{{tools}}, {{tool_names}}, {{format}}",
-    "customTemplatePlaceholder": "输入自定义提示词模板...\n\n可用变量：\n- {{tools}}: 后端生成的工具说明\n- {{tool_names}}: 工具名称列表\n- {{format}}: 协议 ID，例如 managed_xml",
+    "customTemplatePlaceholder": "输入自定义提示词模板...\n\n可用变量：\n- {{tools}}: 后端生成的工具说明\n- {{tool_names}}: 工具名称列表\n- {{format}}: 后端协议标识",
     "threshold": "消息长度阈值",
     "thresholdDesc": "当用户消息长度超过此值时触发注入（智能模式）",
     "triggerKeywords": "触发关键词",

@@ -193,7 +193,7 @@
     "clearChatsWarning": "This will delete all conversation history on this provider's website and cannot be undone.",
     "clearChatsSuccess": "Chat history cleared successfully",
     "clearChatsFailed": "Failed to clear chat history",
-    "clearChatsOnlyForQwenAI": "This feature is only available for Qwen AI, MiniMax, Z.ai, Perplexity, DeepSeek, GLM, and Mimo providers",
+    "clearChatsOnlyForQwenAI": "This feature is only available for Kimi, Qwen, Qwen AI, MiniMax, Z.ai, Perplexity, DeepSeek, GLM, and Mimo providers",
     "saving": "Saving...",
     "saveChanges": "Save Changes",
     "required": "Required",
@@ -243,25 +243,13 @@
     "userTokenPlaceholder": "Enter DeepSeek User Token",
     "userTokenHelp": "Authentication Token from DeepSeek web version, found in browser DevTools Application -> Local Storage -> userToken",
     "models": {
-      "deepseek-v4-pro": "DeepSeek V4 Pro",
-      "deepseek-v4-pro-think": "DeepSeek V4 Pro - Think",
-      "deepseek-v4-pro-search": "DeepSeek V4 Pro - Search",
-      "deepseek-v4-pro-think-search": "DeepSeek V4 Pro - Think+Search",
       "deepseek-v4-flash": "DeepSeek V4 Flash",
-      "deepseek-v4-flash-think": "DeepSeek V4 Flash - Think",
-      "deepseek-v4-flash-search": "DeepSeek V4 Flash - Search",
-      "deepseek-v4-flash-think-search": "DeepSeek V4 Flash - Think+Search",
-      "deepseek-chat": "DeepSeek Chat (legacy)",
-      "deepseek-reasoner": "DeepSeek Reasoner (legacy)",
-      "DeepSeek-V3.2": "DeepSeek V3.2 - Standard Chat",
-      "DeepSeek-Search": "DeepSeek Search - Web Search",
-      "DeepSeek-R1": "DeepSeek R1 - Deep Thinking",
-      "DeepSeek-R1-Search": "DeepSeek R1 Search - Web Search + Thinking"
+      "deepseek-v4-pro": "DeepSeek V4 Pro"
     }
   },
   "glm": {
     "name": "GLM",
-    "description": "Zhipu Qingyan AI Assistant, supports GLM-5 flagship model, deep thinking and web search",
+    "description": "Zhipu Qingyan AI Assistant, supports GLM-5.1 flagship model, deep thinking and web search",
     "refreshToken": "Refresh Token",
     "refreshTokenPlaceholder": "Enter chatglm_refresh_token",
     "refreshTokenHelp": "Get chatglm_refresh_token from Zhipu Qingyan web version, found in browser DevTools Application -> Cookie"
@@ -305,11 +293,12 @@
     "codeMode": "Code Mode",
     "codeModeDesc": "Use Qwen-Coder model, specialized for programming tasks",
     "models": {
-      "qwen3-235b-a22b": "Qwen3-235B-A22B (Deep Thinking)",
-      "qwen3-coder-plus": "Qwen3-Coder (Code Mode)",
-      "qwen3-30b-a3b": "Qwen3-30B-A3B",
-      "qwen-max-latest": "Qwen2.5-Max",
-      "Qwen3.5-Plus": "Qwen3.5-Plus"
+      "Qwen3.6": "Qwen",
+      "Qwen3.7-Max": "Qwen3.7-Max",
+      "Qwen3.5-Flash": "Qwen3.5-Flash",
+      "Qwen3-Max": "Qwen3-Max",
+      "Qwen3-Max-Thinking-Preview": "Qwen3-Max-Thinking-Preview",
+      "Qwen3-Coder": "Qwen3-Coder"
     }
   },
   "qwen-ai": {
@@ -385,6 +374,13 @@
     "modelMappingDesc": "Map request models to actual models used",
     "searchMappings": "Search mappings...",
     "addMapping": "Add Mapping",
+    "restoreDefaults": "Restore Defaults",
+    "confirmRestoreDefaults": "Restoring defaults will remove custom model mappings and rewrite the built-in mappings. Continue?",
+    "defaultsRestored": "Model mappings restored to defaults",
+    "mappingSource": "Source",
+    "builtInMapping": "Built-in",
+    "customMapping": "Custom",
+    "builtInMappingReadonly": "Built-in mappings are managed by the system and cannot be edited or deleted",
     "requestModel": "Request Model",
     "actualModel": "Actual Model",
     "preferredProvider": "Preferred Provider",
@@ -954,7 +950,7 @@
     "promptTemplateTooltip": "Custom prompt template guides the model on how to output tool calls. Leave empty to use the provider profile template. Supports variables: {{tools}} (server-rendered tool instructions), {{tool_names}} (tool names list), {{format}} (protocol ID)",
     "customTemplate": "Custom Template",
     "customTemplateDesc": "Custom prompt template. Supports variables: {{tools}}, {{tool_names}}, {{format}}",
-    "customTemplatePlaceholder": "Enter custom prompt template...\n\nAvailable variables:\n- {{tools}}: Server-rendered tool instructions\n- {{tool_names}}: Tool names list\n- {{format}}: Protocol ID, such as managed_xml",
+    "customTemplatePlaceholder": "Enter custom prompt template...\n\nAvailable variables:\n- {{tools}}: Server-rendered tool instructions\n- {{tool_names}}: Tool names list\n- {{format}}: Backend protocol identifier",
     "threshold": "Message Length Threshold",
     "thresholdDesc": "Injection triggers when user message length exceeds this value (smart mode)",
     "triggerKeywords": "Trigger Keywords",

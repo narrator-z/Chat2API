@@ -4,8 +4,8 @@
  */
 
 import type { ProviderStatus } from '../../shared/types'
-import type { LegacyToolPromptConfig, ToolCallingConfig } from '../../shared/toolCalling'
-import { DEFAULT_TOOL_CALLING_CONFIG } from '../../shared/toolCalling'
+import type { LegacyToolPromptConfig, ToolCallingConfig } from '../../shared/toolCalling.ts'
+import { DEFAULT_TOOL_CALLING_CONFIG } from '../../shared/toolCalling.ts'
 
 /**
  * Account Status Enum
@@ -183,6 +183,8 @@ export interface AppConfig {
   loadBalanceStrategy: LoadBalanceStrategy
   /** Model mapping configuration */
   modelMappings: Record<string, ModelMapping>
+  /** Default model mappings have been seeded into editable config */
+  defaultModelMappingsSeeded?: boolean
   /** UI theme */
   theme: Theme
   /** Auto start on boot */
@@ -602,6 +604,17 @@ export interface ProviderModelOverrides {
  */
 export type UserModelOverrides = Record<string, ProviderModelOverrides>
 
+export const DEEPSEEK_PRIMARY_MODELS = ['deepseek-v4-flash', 'deepseek-v4-pro']
+
+export const DEEPSEEK_LEGACY_MODEL_MAPPING_NAMES = [
+  'deepseek-chat',
+  'deepseek-reasoner',
+  'DeepSeek-V3.2',
+  'DeepSeek-Search',
+  'DeepSeek-R1',
+  'DeepSeek-R1-Search',
+]
+
 /**
  * Effective Model Information
  * Combined model info after merging defaults with user overrides
@@ -762,6 +775,84 @@ export const DEFAULT_REQUEST_LOG_CONFIG: RequestLogConfig = {
   redactSensitiveData: true,
 }
 
+export const DEFAULT_DEEPSEEK_MODEL_MAPPINGS: Record<string, ModelMapping> = {
+  'deepseek-v4-flash-think': {
+    requestModel: 'deepseek-v4-flash-think',
+    actualModel: 'deepseek-v4-flash',
+    preferredProviderId: 'deepseek',
+  },
+  'deepseek-v4-flash-search': {
+    requestModel: 'deepseek-v4-flash-search',
+    actualModel: 'deepseek-v4-flash',
+    preferredProviderId: 'deepseek',
+  },
+  'deepseek-v4-flash-think-search': {
+    requestModel: 'deepseek-v4-flash-think-search',
+    actualModel: 'deepseek-v4-flash',
+    preferredProviderId: 'deepseek',
+  },
+  'deepseek-v4-pro-think': {
+    requestModel: 'deepseek-v4-pro-think',
+    actualModel: 'deepseek-v4-pro',
+    preferredProviderId: 'deepseek',
+  },
+  'deepseek-v4-pro-search': {
+    requestModel: 'deepseek-v4-pro-search',
+    actualModel: 'deepseek-v4-pro',
+    preferredProviderId: 'deepseek',
+  },
+  'deepseek-v4-pro-think-search': {
+    requestModel: 'deepseek-v4-pro-think-search',
+    actualModel: 'deepseek-v4-pro',
+    preferredProviderId: 'deepseek',
+  },
+}
+
+export function createDefaultModelMappings(): Record<string, ModelMapping> {
+  return Object.fromEntries(
+    Object.entries(DEFAULT_DEEPSEEK_MODEL_MAPPINGS).map(([key, mapping]) => [key, { ...mapping }]),
+  )
+}
+
+export function isDefaultModelMapping(requestModel: string): boolean {
+  return requestModel in DEFAULT_DEEPSEEK_MODEL_MAPPINGS
+}
+
+export function normalizeModelMappingsWithDefaults(
+  mappings?: Record<string, ModelMapping>
+): Record<string, ModelMapping> {
+  const legacyModelNames = new Set(DEEPSEEK_LEGACY_MODEL_MAPPING_NAMES)
+  const customMappings = Object.fromEntries(
+    Object.entries(mappings || {}).filter(([requestModel]) =>
+      !isDefaultModelMapping(requestModel) && !legacyModelNames.has(requestModel)
+    ),
+  )
+
+  return {
+    ...createDefaultModelMappings(),
+    ...customMappings,
+  }
+}
+
+export function sanitizeDeepSeekModelOverrides(
+  overrides?: ProviderModelOverrides
+): ProviderModelOverrides {
+  const migratedModelNames = new Set([
+    ...DEEPSEEK_PRIMARY_MODELS,
+    ...DEEPSEEK_LEGACY_MODEL_MAPPING_NAMES,
+    ...Object.keys(DEFAULT_DEEPSEEK_MODEL_MAPPINGS),
+  ])
+
+  return {
+    addedModels: (overrides?.addedModels || []).filter(model =>
+      !migratedModelNames.has(model.displayName)
+    ),
+    excludedModels: (overrides?.excludedModels || []).filter(model =>
+      DEEPSEEK_PRIMARY_MODELS.includes(model)
+    ),
+  }
+}
+
 /**
  * Default Application Configuration
  */
@@ -769,7 +860,8 @@ export const DEFAULT_CONFIG: AppConfig = {
   proxyPort: 8080,
   proxyHost: '127.0.0.1',
   loadBalanceStrategy: 'round-robin',
-  modelMappings: {},
+  modelMappings: createDefaultModelMappings(),
+  defaultModelMappingsSeeded: true,
   theme: 'system',
   autoStart: false,
   autoStartProxy: false,
@@ -794,4 +886,4 @@ export const DEFAULT_CONFIG: AppConfig = {
  * Built-in Provider Configuration
  * Re-exported from providers/builtin/index.ts to avoid duplication
  */
-export { builtinProviders as BUILTIN_PROVIDERS } from '../providers/builtin'
+export { builtinProviders as BUILTIN_PROVIDERS } from '../providers/builtin/index.ts'
