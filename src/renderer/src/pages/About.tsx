@@ -31,7 +31,7 @@ interface DownloadProgress {
 
 export function About() {
   const { t } = useTranslation()
-  const [appVersion, setAppVersion] = useState<string>('1.3.0')
+  const [appVersion, setAppVersion] = useState<string>('')
 
   useEffect(() => {
     if (window.electronAPI?.app?.getVersion) {
@@ -43,6 +43,7 @@ export function About() {
 
   const [updateInfo, setUpdateInfo] = useState<UpdateInfo>({ phase: 'idle', latestVersion: null, error: null })
   const [downloadProgress, setDownloadProgress] = useState<DownloadProgress | null>(null)
+  const displayAppVersion = appVersion || '...'
 
   useEffect(() => {
     if (!window.electronAPI?.app) return
@@ -244,7 +245,7 @@ export function About() {
             <div className="inline-flex items-center gap-2 px-3 py-1 mt-3 rounded-full bg-[var(--glass-bg)] border border-[var(--glass-border)]">
               <div className="w-1.5 h-1.5 rounded-full bg-[var(--accent-primary)]" />
               <span className="text-xs font-mono text-[var(--text-muted)]">
-                v{appVersion}
+                v{displayAppVersion}
               </span>
             </div>
           </div>
@@ -295,7 +296,7 @@ export function About() {
               <p className="text-xs text-[var(--text-muted)]">
                 {t('settings.currentVersion')}:{' '}
                 <span className="text-[var(--text-primary)] font-mono ml-1">
-                  {appVersion}
+                  {displayAppVersion}
                 </span>
               </p>
             </div>

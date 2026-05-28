@@ -39,3 +39,11 @@ test('about page state is driven by updater events, not manual release URLs', ()
   assert.doesNotMatch(about, /releaseUrl/)
   assert.doesNotMatch(about, /hasUpdate/)
 })
+
+test('about page does not hard-code the app version fallback', () => {
+  const about = readFileSync('src/renderer/src/pages/About.tsx', 'utf8')
+
+  assert.match(about, /getVersion\(\)\.then/)
+  assert.match(about, /const displayAppVersion = appVersion \|\| '\.\.\.'/)
+  assert.doesNotMatch(about, /useState<string>\('1\.3\.0'\)/)
+})
