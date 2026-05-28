@@ -633,15 +633,22 @@ const contextManagementAPI = {
     ipcRenderer.invoke(IpcChannels.CONTEXT_MANAGEMENT_UPDATE_CONFIG, updates),
 }
 
+function resolveLocalManagementApiBaseUrl(config: AppConfig): string {
+  const configuredHost = config.proxyHost || '127.0.0.1'
+  const host = configuredHost === '0.0.0.0' || configuredHost === '::' || configuredHost === '[::]'
+    ? '127.0.0.1'
+    : configuredHost
+
+  return `http://${host}:${config.proxyPort}/v0/management`
+}
+
 const toolCallingAPI = {
   async getStatus() {
     const config = await configAPI.get()
-    const host = config.proxyHost || '127.0.0.1'
-    const port = config.managementApi?.managementApiPort || config.proxyPort
     const secret = config.managementApi?.managementApiSecret
     if (!secret) return null
 
-    const response = await fetch(`http://${host}:${port}/v0/management/tool-calling/status`, {
+    const response = await fetch(`${resolveLocalManagementApiBaseUrl(config)}/tool-calling/status`, {
       headers: { Authorization: `Bearer ${secret}` },
     })
     return response.json()
@@ -649,14 +656,12 @@ const toolCallingAPI = {
 
   async runSmoke(input: { clientAdapterId: string }) {
     const config = await configAPI.get()
-    const host = config.proxyHost || '127.0.0.1'
-    const port = config.managementApi?.managementApiPort || config.proxyPort
     const secret = config.managementApi?.managementApiSecret
     if (!secret) {
       return { success: false, error: { message: 'Management API secret is not configured.' } }
     }
 
-    const response = await fetch(`http://${host}:${port}/v0/management/tool-calling/smoke`, {
+    const response = await fetch(`${resolveLocalManagementApiBaseUrl(config)}/tool-calling/smoke`, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${secret}`,

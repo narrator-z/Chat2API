@@ -99,7 +99,8 @@ test('DeepSeek persisted model overrides are migrated away from old built-in ali
 
   assert.match(storeSource, /p\.id === 'deepseek'/)
   assert.match(storeSource, /sanitizeDeepSeekModelOverrides/)
-  assert.match(storeSource, /const shouldUseBuiltinModels = p\.id === 'deepseek' \|\| !hasUserOverrides/)
+  assert.match(storeSource, /supportedModels: builtinConfig\.supportedModels/)
+  assert.match(storeSource, /modelMappings: builtinConfig\.modelMappings/)
 })
 
 test('DeepSeek feature aliases are seeded as global model mappings', () => {
@@ -270,15 +271,12 @@ test('domestic Qwen models match the web chat model ids captured from HAR', () =
   assert.deepEqual(qwenConfig.modelMappings, expectedMappings)
 
   const qwenAdapterSource = readFileSync(join(root, 'src/main/proxy/adapters/qwen.ts'), 'utf8')
-  const addProviderSource = readFileSync(join(root, 'src/renderer/src/components/providers/AddProviderDialog.tsx'), 'utf8')
   const zh = JSON.parse(readFileSync(join(root, 'src/renderer/src/i18n/locales/zh-CN.json'), 'utf8'))
   const en = JSON.parse(readFileSync(join(root, 'src/renderer/src/i18n/locales/en-US.json'), 'utf8'))
 
   assert.match(qwenAdapterSource, /'Qwen3\.6': 'Qwen'/)
   assert.match(qwenAdapterSource, /'Qwen3-Coder': 'Qwen3-Coder'/)
   assert.doesNotMatch(qwenAdapterSource, /qwen3-coder-plus|tongyi-qwen3-max-model-agent|tongyi-qwen-plus-agent/)
-  assert.match(addProviderSource, /supportedModels: \['Qwen3\.6', 'Qwen3\.7-Max', 'Qwen3\.5-Flash', 'Qwen3-Max', 'Qwen3-Max-Thinking-Preview', 'Qwen3-Coder'\]/)
-  assert.match(addProviderSource, /'Qwen3\.6': 'Qwen'/)
   assert.deepEqual(zh.qwen.models, expectedMappings)
   assert.deepEqual(en.qwen.models, expectedMappings)
 })
@@ -356,6 +354,13 @@ test('Z.ai default models match the latest chat.z.ai HAR model ids', () => {
   assert.match(zaiAdapterSource, /'glm-5\.1': 'GLM-5\.1'/)
   assert.match(zaiAdapterSource, /'glm-5v-turbo': 'GLM-5v-Turbo'/)
   assert.match(zaiAdapterSource, /'GLM-5V-Turbo': 'GLM-5v-Turbo'/)
+  assert.match(zaiAdapterSource, /const X_FE_VERSION = 'prod-fe-1\.1\.37'/)
+  assert.match(zaiAdapterSource, /'X-Region': 'domestic'/)
+  assert.match(zaiAdapterSource, /captcha_verify_param/)
+  assert.match(zaiAdapterSource, /new URLSearchParams\(\{[\s\S]*token,/)
+  assert.match(zaiAdapterSource, /api\/v2\/chat\/completions\?\$\{queryParams\.toString\(\)\}/)
+  assert.match(zaiAdapterSource, /Authorization: `Bearer \$\{token\}`/)
+  assert.match(zaiAdapterSource, /'Cookie': `token=\$\{token\}`/)
   assert.doesNotMatch(zaiAdapterSource, /'glm-4\.6v':/)
   assert.doesNotMatch(zaiAdapterSource, /'glm-4\.5-air':/)
 })
@@ -430,7 +435,8 @@ test('README Supported Providers model lists mirror current defaults with Perple
     ['Z.ai', zaiConfig.supportedModels?.join(', ')],
   ]
 
-  assert.deepEqual(perplexityConfig.supportedModels?.[0], 'Auto')
+  assert.deepEqual(perplexityConfig.supportedModels, ['Auto'])
+  assert.deepEqual(perplexityConfig.modelMappings, { Auto: 'auto' })
 
   for (const [provider, models] of expectedRows) {
     assert.match(readme, new RegExp(`\\| ${provider.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}[^\\n]*\\| ${models?.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*\\|`))
@@ -439,6 +445,10 @@ test('README Supported Providers model lists mirror current defaults with Perple
 
   assert.doesNotMatch(readme, /Perplexity[^\n]*(Turbo|PPLX-Pro|GPT-5|Gemini-2\.5-Pro|Claude-Sonnet-4|Claude-Opus-4|Nemotron)/)
   assert.doesNotMatch(readmeCn, /Perplexity[^\n]*(Turbo|PPLX-Pro|GPT-5|Gemini-2\.5-Pro|Claude-Sonnet-4|Claude-Opus-4|Nemotron)/)
+  assert.doesNotMatch(
+    readFileSync(join(root, 'docs/providers/perplexity.md'), 'utf8'),
+    /\| (Turbo|PPLX-Pro|GPT-5|Gemini-2\.5-Pro|Claude-Sonnet-4|Claude-Opus-4|Nemotron) \|/,
+  )
 })
 
 test('Mimo model names and conversation flow match Xiaomi AI Studio web requests', () => {
@@ -478,24 +488,29 @@ test('Mimo model names and conversation flow match Xiaomi AI Studio web requests
   assert.match(forwardMimoSource, /await deleteSessionCallback\(conversationId\)/)
 })
 
-test('Add provider dialog templates match the updated built-in provider flows', () => {
+test('Add provider dialog uses IPC built-in providers instead of duplicated model templates', () => {
   const source = readFileSync(
     join(root, 'src/renderer/src/components/providers/AddProviderDialog.tsx'),
     'utf8',
   )
 
-  assert.match(source, /supportedModels:\s*\['deepseek-v4-flash', 'deepseek-v4-pro'\]/)
-  assert.doesNotMatch(source, /supportedModels:\s*\['deepseek-v4-pro'.*'deepseek-reasoner'/s)
-  assert.doesNotMatch(source, /DeepSeek-V3\.2|DeepSeek-R1|deepseek-reasoner/)
-  assert.match(source, /supportedModels: \['GLM-5\.1'\]/)
-  assert.match(source, /'GLM-5\.1': 'glm-5\.1'/)
-  assert.match(source, /supportedModels: \['Kimi-K2\.6'\]/)
-  assert.match(source, /'Kimi-K2\.6': 'kimi-k2\.6'/)
-  assert.doesNotMatch(source, /'Kimi-K2\.5': 'kimi-k2\.5'/)
-  assert.match(source, /supportedModels: \['MiniMax-M2\.7'\]/)
-  assert.match(source, /'MiniMax-M2\.7': 'MiniMax-M2\.7'/)
-  assert.match(source, /'Content-Type': 'application\/connect\+json'/)
-  assert.doesNotMatch(source, /supportedModels: \['kimi', 'kimi-search', 'kimi-research', 'kimi-k1'\]/)
+  assert.match(source, /const providers = builtinProviders/)
+  assert.doesNotMatch(source, /DEFAULT_BUILTIN_PROVIDERS/)
+  assert.doesNotMatch(source, /supportedModels:\s*\[/)
+  assert.doesNotMatch(source, /DeepSeek-V3\.2|DeepSeek-R1|deepseek-reasoner|Kimi-K2\.5|MiniMax-M2\.5/)
+})
+
+test('built-in model reset restores source defaults instead of stale persisted provider models', () => {
+  const source = readFileSync(
+    join(root, 'src/main/store/store.ts'),
+    'utf8',
+  )
+
+  assert.doesNotMatch(source, /shouldUseBuiltinModels/)
+  assert.match(source, /supportedModels: builtinConfig\.supportedModels/)
+  assert.match(source, /modelMappings: builtinConfig\.modelMappings/)
+  assert.match(source, /resetModels\(providerId: string\): EffectiveModel\[\][\s\S]*BUILTIN_PROVIDERS\.find/)
+  assert.match(source, /resetModels\(providerId: string\): EffectiveModel\[\][\s\S]*this\.store!\.set\('providers', providers\)/)
 })
 
 test('DeepSeek locale model labels only describe primary provider models', () => {
@@ -542,6 +557,15 @@ test('forwarder reads toolCallingConfig and does not use legacy prompt config fo
   assert.match(source, /new ToolCallingEngine\(/)
   assert.doesNotMatch(source, /toolPromptConfig\.defaultFormat/)
   assert.doesNotMatch(source, /promptInjectionService\.process\(/)
+})
+
+test('built-in provider sync keeps credential field updates on existing providers', () => {
+  const source = readFileSync(
+    join(root, 'src/main/store/store.ts'),
+    'utf8',
+  )
+
+  assert.match(source, /credentialFields: builtinConfig\.credentialFields/)
 })
 
 test('DeepSeek forwarder preserves requested model aliases for response parsing semantics', () => {

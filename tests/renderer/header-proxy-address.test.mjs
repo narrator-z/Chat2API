@@ -20,3 +20,14 @@ test('header proxy badge renders the configured bind address instead of a hard-c
   assert.match(headerSource, /\{host\}:\{port\}/)
   assert.doesNotMatch(headerSource, /127\.0\.0\.1:\{port\}/)
 })
+
+test('tool calling smoke uses a local management API URL that is actually served by the proxy', () => {
+  const preloadSource = readFileSync(join(root, 'src/preload/index.ts'), 'utf8')
+  const managementSettingsSource = readFileSync(join(root, 'src/renderer/src/components/settings/ManagementApiSettings.tsx'), 'utf8')
+
+  assert.match(preloadSource, /function resolveLocalManagementApiBaseUrl\(config: AppConfig\)/)
+  assert.match(preloadSource, /configuredHost === '0\.0\.0\.0'/)
+  assert.match(preloadSource, /return `http:\/\/\$\{host\}:\$\{config\.proxyPort\}\/v0\/management`/)
+  assert.doesNotMatch(preloadSource, /managementApi\?\.managementApiPort \|\| config\.proxyPort/)
+  assert.match(managementSettingsSource, /const apiEndpoint = `http:\/\/127\.0\.0\.1:\$\{proxyPort\}\/v0\/management`/)
+})

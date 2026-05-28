@@ -333,18 +333,14 @@ class StoreManager {
             }
           }
 
-          const hasUserOverrides = userModelOverrides[p.id] &&
-            ((userModelOverrides[p.id].addedModels && userModelOverrides[p.id].addedModels.length > 0) ||
-             (userModelOverrides[p.id].excludedModels && userModelOverrides[p.id].excludedModels.length > 0))
-          const shouldUseBuiltinModels = p.id === 'deepseek' || !hasUserOverrides
-          
           return { 
             ...p, 
             apiEndpoint: builtinConfig.apiEndpoint,
             chatPath: builtinConfig.chatPath,
-            supportedModels: shouldUseBuiltinModels ? builtinConfig.supportedModels : p.supportedModels,
-            modelMappings: shouldUseBuiltinModels ? builtinConfig.modelMappings : p.modelMappings,
+            supportedModels: builtinConfig.supportedModels,
+            modelMappings: builtinConfig.modelMappings,
             headers: builtinConfig.headers,
+            credentialFields: builtinConfig.credentialFields,
             description: builtinConfig.description,
           }
         }
@@ -1685,6 +1681,28 @@ class StoreManager {
     if (overrides[providerId]) {
       delete overrides[providerId]
       this.setUserModelOverrides(overrides)
+    }
+
+    const builtinConfig = BUILTIN_PROVIDERS.find(provider => provider.id === providerId)
+    if (builtinConfig) {
+      const providers = (this.store!.get('providers') as Provider[] || []).map(provider => {
+        if (provider.id !== providerId || provider.type !== 'builtin') {
+          return provider
+        }
+
+        return {
+          ...provider,
+          apiEndpoint: builtinConfig.apiEndpoint,
+          chatPath: builtinConfig.chatPath,
+          supportedModels: builtinConfig.supportedModels,
+          modelMappings: builtinConfig.modelMappings,
+          headers: builtinConfig.headers,
+          credentialFields: builtinConfig.credentialFields,
+          description: builtinConfig.description,
+          updatedAt: Date.now(),
+        }
+      })
+      this.store!.set('providers', providers)
     }
 
     return this.getEffectiveModels(providerId)
