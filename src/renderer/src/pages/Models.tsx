@@ -7,6 +7,7 @@ import { ModelList } from '@/components/models'
 import { ToolCallingPanel } from '@/components/models/ToolCallingPanel'
 import { ModelMappingConfig } from '@/components/proxy'
 import { useProxyStore } from '@/stores/proxyStore'
+import { useProvidersStore } from '@/stores/providersStore'
 
 export function Models() {
   const { t } = useTranslation()
@@ -19,7 +20,31 @@ export function Models() {
   useEffect(() => {
     if (hasLoadedRef.current) return
     hasLoadedRef.current = true
-    fetchAppConfig()
+    
+    const loadData = async () => {
+      // Load app config
+      fetchAppConfig()
+      
+      // Load providers, builtin providers, and accounts if not already loaded
+      const { providers, builtinProviders, accounts } = useProvidersStore.getState()
+      if (providers.length === 0 || builtinProviders.length === 0) {
+        try {
+          const [providersData, builtinData, accountsData] = await Promise.all([
+            window.electronAPI?.providers?.getAll() || Promise.resolve([]),
+            window.electronAPI?.providers?.getBuiltin() || Promise.resolve([]),
+            window.electronAPI?.accounts?.getAll() || Promise.resolve([]),
+          ])
+          
+          useProvidersStore.getState().setProviders(providersData)
+          useProvidersStore.getState().setBuiltinProviders(builtinData)
+          useProvidersStore.getState().setAccounts(accountsData)
+        } catch (error) {
+          console.error('Failed to load initial data:', error)
+        }
+      }
+    }
+    
+    loadData()
   }, [fetchAppConfig])
 
   useEffect(() => {
