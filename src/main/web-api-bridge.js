@@ -49,9 +49,17 @@
     }
   }
   
-  // Override the native clipboard API for HTTP pages where it's blocked
+  // Override the clipboard API for HTTP pages where navigator.clipboard is unavailable
+  // or blocked by browser security policy
   try {
-    if (navigator.clipboard && navigator.clipboard.writeText) {
+    if (!navigator.clipboard) {
+      navigator.clipboard = {};
+    }
+    if (!navigator.clipboard.writeText) {
+      navigator.clipboard.writeText = function(text) {
+        return safeCopyToClipboard(text);
+      };
+    } else {
       const nativeWriteText = navigator.clipboard.writeText.bind(navigator.clipboard);
       navigator.clipboard.writeText = function(text) {
         return nativeWriteText(text).catch(function() {
