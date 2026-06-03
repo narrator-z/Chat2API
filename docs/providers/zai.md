@@ -7,6 +7,7 @@
 | API Base | https://chat.z.ai/api |
 | 认证 | JWT Token |
 | 凭据字段 | `token`，可选 `captcha_verify_param` |
+| 当前状态 | 受前端验证码风控限制，暂不可用 |
 
 ## 默认模型
 
@@ -20,16 +21,16 @@
 
 ## 适配状态
 
-已适配：流式对话、非流式对话、多轮会话、账号级清理对话记录、GLM 系列模型映射。
+暂不可用：Z.ai 当前对 `/api/v2/chat/completions` 增加了前端验证码风控校验。Web 页面可用是因为浏览器会运行阿里云 CaptchaJS、生成设备令牌并完成 VerifyCaptchaV3，再把短时有效的 `captcha_verify_param` 带入对话请求。代理侧仅携带 JWT token、Cookie、浏览器 headers 或 HAR 中复制出的旧 `captcha_verify_param`，仍可能返回 `FRONTEND_CAPTCHA_REQUIRED`。
 
-最新 HAR 适配：`X-FE-Version: prod-fe-1.1.37`、`X-Region: domestic`、带浏览器环境 query 参数和 token 认证头的 `/api/v2/chat/completions` 请求。若官网触发验证码，需从最新完成请求体中复制 `captcha_verify_param` 到账号凭据。
+已完成的适配尝试：流式对话、非流式对话、多轮会话、账号级清理对话记录、GLM 系列模型映射、`X-FE-Version: prod-fe-1.1.37`、`X-Region: domestic`、带浏览器环境 query 参数和 token 认证头的 `/api/v2/chat/completions` 请求。
 
-后续验证：模型升级、视觉模型 `GLM-5V-Turbo` 的附件/图片输入字段、清理会话接口返回字段。
+后续方向：需要独立评估真实浏览器辅助模式，让 Z.ai Web 页面自行生成短时验证码参数；在此之前不建议把 Z.ai 作为稳定可用供应商。
 
 ## 教程
 
 1. 登录 `chat.z.ai`。
 2. 打开 DevTools -> Application -> Cookies 或请求头，复制以 `eyJ` 开头的 JWT token。
-3. 如果官网对话请求体包含 `captcha_verify_param`，同时复制该字段值。
-4. 在供应商管理中添加 Z.ai 账号，填入 `token`，必要时填入 `captcha_verify_param`。
-5. 优先使用 `GLM-5.1` 或 `GLM-5-Turbo` 验证基础对话能力；视觉模型使用 `GLM-5V-Turbo`，实际请求 ID 为 `GLM-5v-Turbo`。
+3. 在供应商管理中添加 Z.ai 账号，填入 `token`。
+4. 当前对话接口受验证码风控限制，添加账号不代表可正常完成对话。
+5. `captcha_verify_param` 仅保留为调试字段；该值通常短时有效，不能作为长期账号凭据使用。

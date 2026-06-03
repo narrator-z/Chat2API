@@ -57,7 +57,7 @@
 | Perplexity       | Cookie        | Yes   | Auto                                                                                                                                                                                                                                           |
 | Qwen (CN)        | SSO Ticket    | Yes   | Qwen3.6, Qwen3.7-Max, Qwen3.5-Flash, Qwen3-Max, Qwen3-Max-Thinking-Preview, Qwen3-Coder                                                                                                                                                         |
 | Qwen AI (Global) | JWT Token     | Yes   | Qwen3.7-Max, Qwen3.6-Plus, Qwen3.6-35B-A3B, Qwen3.6-27B, Qwen3-Coder                                                                                                                                                                           |
-| Z.ai             | JWT Token     | Yes   | GLM-5.1, GLM-5-Turbo, GLM-5V-Turbo, GLM-5, GLM-4.7                                                                                                                                                                                            |
+| Z.ai             | JWT Token     | Yes   | Temporarily unavailable due to frontend captcha risk control                                                                                                                                                                                    |
 
 Provider adaptation notes and manual model-addition guides are in [docs/providers](docs/providers/README.md).
 

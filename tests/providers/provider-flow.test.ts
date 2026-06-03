@@ -365,6 +365,18 @@ test('Z.ai default models match the latest chat.z.ai HAR model ids', () => {
   assert.doesNotMatch(zaiAdapterSource, /'glm-4\.5-air':/)
 })
 
+test('Z.ai docs mark provider temporarily unavailable due to captcha risk control', () => {
+  const readme = readFileSync(join(root, 'README.md'), 'utf8')
+  const readmeCn = readFileSync(join(root, 'README_CN.md'), 'utf8')
+  const doc = readFileSync(join(root, 'docs/providers/zai.md'), 'utf8')
+
+  assert.match(readme, /Z\.ai[^\n]*Temporarily unavailable due to frontend captcha risk control/)
+  assert.match(readmeCn, /Z\.ai[^\n]*受前端验证码风控限制，暂不可用/)
+  assert.match(doc, /当前状态 \| 受前端验证码风控限制，暂不可用/)
+  assert.match(doc, /FRONTEND_CAPTCHA_REQUIRED/)
+  assert.match(doc, /captcha_verify_param.*调试字段/)
+})
+
 test('provider docs cover every built-in provider and Qwen AI manual model additions', () => {
   const providerDocs = [
     'deepseek',
@@ -432,7 +444,6 @@ test('README Supported Providers model lists mirror current defaults with Perple
     ['Perplexity', 'Auto'],
     ['Qwen', qwenConfig.supportedModels?.join(', ')],
     ['Qwen AI', qwenAiConfig.supportedModels?.join(', ')],
-    ['Z.ai', zaiConfig.supportedModels?.join(', ')],
   ]
 
   assert.deepEqual(perplexityConfig.supportedModels, ['Auto'])
@@ -442,6 +453,9 @@ test('README Supported Providers model lists mirror current defaults with Perple
     assert.match(readme, new RegExp(`\\| ${provider.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}[^\\n]*\\| ${models?.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*\\|`))
     assert.match(readmeCn, new RegExp(`\\| ${provider.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}[^\\n]*\\| ${models?.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*\\|`))
   }
+
+  assert.match(readme, /Z\.ai[^\n]*Temporarily unavailable due to frontend captcha risk control/)
+  assert.match(readmeCn, /Z\.ai[^\n]*受前端验证码风控限制，暂不可用/)
 
   assert.doesNotMatch(readme, /Perplexity[^\n]*(Turbo|PPLX-Pro|GPT-5|Gemini-2\.5-Pro|Claude-Sonnet-4|Claude-Opus-4|Nemotron)/)
   assert.doesNotMatch(readmeCn, /Perplexity[^\n]*(Turbo|PPLX-Pro|GPT-5|Gemini-2\.5-Pro|Claude-Sonnet-4|Claude-Opus-4|Nemotron)/)

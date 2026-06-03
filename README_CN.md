@@ -57,7 +57,7 @@
 | Perplexity    | Cookie        | 是     | Auto                                                                                                                                                                                                                                         |
 | Qwen (国内版)    | SSO Ticket    | 是     | Qwen3.6, Qwen3.7-Max, Qwen3.5-Flash, Qwen3-Max, Qwen3-Max-Thinking-Preview, Qwen3-Coder                                                                                                                                                       |
 | Qwen AI (国际版) | JWT Token     | 是     | Qwen3.7-Max, Qwen3.6-Plus, Qwen3.6-35B-A3B, Qwen3.6-27B, Qwen3-Coder                                                                                                                                                                         |
-| Z.ai          | JWT Token     | 是     | GLM-5.1, GLM-5-Turbo, GLM-5V-Turbo, GLM-5, GLM-4.7                                                                                                                                                                                          |
+| Z.ai          | JWT Token     | 是     | 受前端验证码风控限制，暂不可用                                                                                                                                                                                                                              |
 
 供应商适配说明和手动添加模型教程见 [docs/providers](docs/providers/README.md)。
 
