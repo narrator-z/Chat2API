@@ -73,7 +73,14 @@
       // Otherwise return config[key]
       return key === 'config' ? config : config[key];
     },
-    set: (key, value) => post('/config', { [key]: value }),
+    set: async (key, value) => {
+      // When key is 'config', the value is the entire AppConfig object
+      // Send it directly instead of wrapping in { config: value }
+      if (key === 'config') {
+        return post('/config', value);
+      }
+      return post('/config', { [key]: value });
+    },
     delete: (key) => post('/config', { [key]: undefined }),
     clearAll: () => post('/config', {}),
     onInitError: (callback) => () => {},
