@@ -247,24 +247,19 @@ export class LoadBalancer {
       console.log(`[LoadBalancer] Extracted model name from prefix format: "${model}" -> "${normalizedModel}"`)
     }
     
-    const effectiveModels = fileStoreManager.getEffectiveModels(provider.id)
-    const effectiveModel = effectiveModels.find(m => 
-      m.displayName.toLowerCase() === normalizedModel.toLowerCase()
-    )
-    
-    if (effectiveModel) {
-      console.log(`[LoadBalancer] Model mapped from "${model}" to "${effectiveModel.actualModelId}" via effective models`)
-      return effectiveModel.actualModelId
-    }
-
     const config = fileStoreManager.getConfig()
-    const mapping = config.modelMappings[normalizedModel] || 
-                     this.findWildcardMapping(normalizedModel, config.modelMappings)
-
-    if (mapping && (!mapping.preferredProviderId || mapping.preferredProviderId === provider.id)) {
-      const actualModel = mapping.actualModel
+    const effectiveModels = fileStoreManager.getEffectiveModels(provider.id)
+    
+    // Priority 1: Check global model mappings first (including wildcard patterns)
+    // This allows users to set global mappings like "gpt-*" -> "Qwen3.6" that work across all providers
+    let globalMapping = config.modelMappings[normalizedModel] || 
+                        this.findWildcardMapping(normalizedModel, config.modelMappings)
+    
+    if (globalMapping && (!globalMapping.preferredProviderId || globalMapping.preferredProviderId === provider.id)) {
+      const actualModel = globalMapping.actualModel
       console.log(`[LoadBalancer] Model mapped from "${model}" to "${actualModel}" via global mapping`)
       
+      // Check if the mapped model exists in effective models for further mapping
       const actualEffectiveModel = effectiveModels.find(m => 
         m.displayName.toLowerCase() === actualModel.toLowerCase()
       )
@@ -283,6 +278,16 @@ export class LoadBalancer {
       const actualModel = originalMapping.actualModel
       console.log(`[LoadBalancer] Model mapped from "${model}" to "${actualModel}" via global mapping (original key)`)
       return actualModel
+    }
+
+    // Priority 2: Check provider-level effective models (custom models added by user)
+    const effectiveModel = effectiveModels.find(m => 
+      m.displayName.toLowerCase() === normalizedModel.toLowerCase()
+    )
+    
+    if (effectiveModel) {
+      console.log(`[LoadBalancer] Model mapped from "${model}" to "${effectiveModel.actualModelId}" via effective models`)
+      return effectiveModel.actualModelId
     }
 
     console.log(`[LoadBalancer] No mapping found, returning original model "${model}"`)
