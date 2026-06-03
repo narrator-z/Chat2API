@@ -29,6 +29,40 @@
     return q ? '?' + q : '';
   };
 
+  // ==================== Copy to Clipboard ====================
+  // Browsers block navigator.clipboard on HTTP pages, use textarea fallback
+  function safeCopyToClipboard(text) {
+    try {
+      const textarea = document.createElement('textarea');
+      textarea.value = text;
+      textarea.style.position = 'fixed';
+      textarea.style.opacity = '0';
+      textarea.style.pointerEvents = 'none';
+      document.body.appendChild(textarea);
+      textarea.select();
+      textarea.setSelectionRange(0, text.length);
+      const success = document.execCommand('copy');
+      document.body.removeChild(textarea);
+      return Promise.resolve(success);
+    } catch {
+      return Promise.resolve(false);
+    }
+  }
+  
+  // Override the native clipboard API for HTTP pages where it's blocked
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      const nativeWriteText = navigator.clipboard.writeText.bind(navigator.clipboard);
+      navigator.clipboard.writeText = function(text) {
+        return nativeWriteText(text).catch(function() {
+          return safeCopyToClipboard(text);
+        });
+      };
+    }
+  } catch (e) {
+    console.warn('[WebBridge] Failed to override clipboard API', e);
+  }
+
   // SSE event emitter for simulating Electron event subscriptions
   const _listeners = {};
   function emit(event, data) {
@@ -69,13 +103,9 @@
     get: async (key) => {
       const config = await get('/config');
       if (!config) return undefined;
-      // If key is 'config', return the entire config object
-      // Otherwise return config[key]
       return key === 'config' ? config : config[key];
     },
     set: async (key, value) => {
-      // When key is 'config', the value is the entire AppConfig object
-      // Send it directly instead of wrapping in { config: value }
       if (key === 'config') {
         return post('/config', value);
       }
@@ -176,6 +206,7 @@
     onUpdateProgress: (callback) => () => {},
     onUpdateDownloaded: (callback) => () => {},
     onUpdateError: (callback) => () => {},
+    copyToClipboard: (text) => safeCopyToClipboard(text),
   };
 
   const configAPI = {
@@ -268,7 +299,6 @@
     on: (channel, callback) => on(channel, callback),
     send: (channel, ...args) => {},
     invoke: async (channel, ...args) => {
-      // Map common channels to REST API
       if (channel in managementApiInvoke) {
         return managementApiInvoke[channel](...args)
       }
