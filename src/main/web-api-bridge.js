@@ -68,7 +68,10 @@
   const storeAPI = {
     get: async (key) => {
       const config = await get('/config');
-      return config ? config[key] : undefined;
+      if (!config) return undefined;
+      // If key is 'config', return the entire config object
+      // Otherwise return config[key]
+      return key === 'config' ? config : config[key];
     },
     set: (key, value) => post('/config', { [key]: value }),
     delete: (key) => post('/config', { [key]: undefined }),
