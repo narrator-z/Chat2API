@@ -202,7 +202,13 @@ export class CustomProviderManager {
     }
     
     if (existing.type === 'builtin') {
-      throw new Error('Cannot modify built-in provider')
+      // Only allow updating enabled/disabled status for built-in providers
+      const allowedKeys = ['enabled']
+      const hasDisallowed = Object.keys(updates).some((key) => !allowedKeys.includes(key))
+      
+      if (hasDisallowed) {
+        throw new Error('Cannot modify built-in provider')
+      }
     }
     
     if (updates.name && updates.name !== existing.name) {

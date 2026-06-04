@@ -210,14 +210,19 @@ router.put('/providers/:id', async (ctx) => {
     }
     if (existing.type === 'builtin') {
       // Only allow updating enabled/disabled status for built-in providers
-      if (Object.keys(updates).length === 1 && 'enabled' in updates) {
-        const updated = fileStoreManager.updateProvider(id, { enabled: updates.enabled, updatedAt: Date.now() })
-        if (updated) {
-          fileStoreManager.addLog('info', `Updated built-in provider status: ${existing.name} -> ${updates.enabled ? 'enabled' : 'disabled'}`, { providerId: id })
-        }
-        return jsonOk(ctx, updated)
+      const restricted = ['name', 'authType', 'apiEndpoint', 'type', 'id', 'createdAt']
+      const hasRestricted = Object.keys(updates).some((key) => restricted.includes(key))
+      
+      if (hasRestricted) {
+        throw new Error('Cannot modify built-in provider core configuration')
       }
-      throw new Error('Cannot modify built-in provider')
+      
+      // Allow safe fields like enabled, updatedAt, etc.
+      const updated = fileStoreManager.updateProvider(id, { ...updates, updatedAt: Date.now() })
+      if (updated) {
+        fileStoreManager.addLog('info', `Updated built-in provider: ${existing.name}`, { providerId: id, updates })
+      }
+      return jsonOk(ctx, updated)
     }
 
     if (updates.name && updates.name !== existing.name) {
