@@ -398,6 +398,16 @@ export class ProviderChecker {
             const decoded = Buffer.from(payload, 'base64').toString('utf8')
             const data = JSON.parse(decoded)
             realUserID = data.user?.id || data.id || data.sub || ''
+
+            // Check if token is expired based on exp field in JWT
+            if (data.exp) {
+              const currentTime = Math.floor(Date.now() / 1000)
+              if (currentTime >= data.exp) {
+                console.log('[MiniMax] Token has expired based on JWT exp field')
+                return { valid: false, error: 'Token has expired' }
+              }
+            }
+
             console.log('[MiniMax] Extracted userId from token:', realUserID)
           }
         } catch (e) {
@@ -478,7 +488,7 @@ export class ProviderChecker {
         }
       }
       
-      if (response.data?.statusInfo?.code === 1001) {
+      if (response.status === 401 || response.data?.statusInfo?.code === 1001 || response.data?.statusInfo?.code === 1000) {
         return { valid: false, error: 'Token expired or invalid' }
       }
       
