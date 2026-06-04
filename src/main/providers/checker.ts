@@ -462,7 +462,13 @@ export class ProviderChecker {
       console.log('[MiniMax] Response data:', JSON.stringify(response.data, null, 2))
       
       if (response.status === 200 && response.data?.data?.deviceIDStr) {
-        const userInfo = response.data.data.userInfo
+        // If device registration returns empty userID/realUserID, the JWT is invalid/expired
+        const data = response.data.data
+        if (!data.userID && !data.realUserID) {
+          console.log('[MiniMax] Device register succeeded but returned empty userID - token likely expired')
+          return { valid: false, error: 'Token is invalid or expired (empty user ID)' }
+        }
+        const userInfo = data.userInfo
         return {
           valid: true,
           userInfo: {
