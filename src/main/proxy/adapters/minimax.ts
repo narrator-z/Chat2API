@@ -305,7 +305,9 @@ export class MiniMaxAdapter {
     
     const userData = { ...FAKE_USER_DATA }
     const realUserID = deviceInfo.realUserID || deviceInfo.userId
-    userData.uuid = realUserID
+    // uuid must be the registered device uuid, not the user ID
+    // otherwise MiniMax API returns HTTP 401
+    userData.uuid = deviceInfo.uuid || realUserID
     userData.device_id = deviceInfo.deviceId || undefined
     userData.user_id = realUserID
     userData.unix = unix
@@ -323,7 +325,7 @@ export class MiniMaxAdapter {
     const yy = md5(`${encodeURIComponent(fullUri)}_${dataJson}${md5(unix)}ooui`)
     const signature = md5(`${timestamp}${this.jwtToken}${dataJson}`)
 
-    console.log('[MiniMax] Request - uuid:', realUserID, 'user_id:', realUserID, 'device_id:', deviceInfo.deviceId)
+    console.log('[MiniMax] Request - uuid:', userData.uuid, 'user_id:', realUserID, 'device_id:', deviceInfo.deviceId)
 
     return await axios.request({
       method,
@@ -353,9 +355,10 @@ export class MiniMaxAdapter {
     const timestamp = unixTimestamp()
 
     const userData = { ...FAKE_USER_DATA }
-    // Both uuid and user_id should use realUserID (matching reference implementation)
     const realUserID = deviceInfo.realUserID || deviceInfo.userId
-    userData.uuid = realUserID
+    // uuid must be the registered device uuid, not the user ID
+    // otherwise MiniMax API returns HTTP 401
+    userData.uuid = deviceInfo.uuid || realUserID
     userData.device_id = deviceInfo.deviceId || undefined
     userData.user_id = realUserID
     userData.unix = unix
@@ -372,7 +375,7 @@ export class MiniMaxAdapter {
     const yy = md5(`${encodeURIComponent(`${uri}?${queryStr}`)}_${dataJson}${md5(unix)}ooui`)
     const signature = md5(`${timestamp}${this.jwtToken}${dataJson}`)
 
-    console.log('[MiniMax] Stream Request - uuid:', realUserID, 'user_id:', realUserID, 'device_id:', deviceInfo.deviceId)
+    console.log('[MiniMax] Stream Request - uuid:', userData.uuid, 'user_id:', realUserID, 'device_id:', deviceInfo.deviceId)
     console.log('[MiniMax] Request body:', dataJson)
     console.log('[MiniMax] Query string:', queryStr)
     console.log('[MiniMax] Headers - timestamp:', timestamp, 'signature:', signature.substring(0, 16) + '...', 'yy:', yy.substring(0, 16) + '...')
